@@ -187,14 +187,18 @@ async def run_mission():
                 climb_cmd = max(-0.5, min(0.5, z_err * 0.5))
                 
                 if front_status == "LOCKED" and front_class == "Aruco Area":
-                    if not has_seen_target:
-                        blind_start_x = DRONE_X
-                        blind_start_y = DRONE_Y
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
                     has_seen_target = True
                     timeout_counter = 0
                     last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                    
+                    if abs(front_err_x) > 40:
+                        # Target off-center! Hover and rotate to face it before pushing forward.
+                        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                    else:
+                        await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah
                     dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2)
@@ -307,14 +311,17 @@ async def run_mission():
                 has_seen_target = False
             else:
                 if front_status == "LOCKED" and front_class == "Aruco Area":
-                    if not has_seen_target:
-                        blind_start_x = DRONE_X
-                        blind_start_y = DRONE_Y
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
                     has_seen_target = True
                     timeout_counter = 0
                     last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=yaw_cmd)
+                    
+                    if abs(front_err_x) > 40:
+                        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=yaw_cmd)
+                    else:
+                        await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=yaw_cmd)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Blind spot creep
                     dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2)
@@ -468,14 +475,17 @@ async def run_mission():
                 # Rule 4: Flat Object Camera Handoff
                 # Kalo drop box kelihatan di kamera depan, steer ke sana
                 if front_status == "LOCKED" and front_class in ["Red Drop Box", "RedDrop Box"]:
-                    if not has_seen_target:
-                        blind_start_x = DRONE_X
-                        blind_start_y = DRONE_Y
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
                     has_seen_target = True
                     timeout_counter = 0
                     last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
-                    await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                    
+                    if abs(front_err_x) > 40:
+                        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                    else:
+                        await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah. Creep pelan pakai memori yaw.
                     dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2)
@@ -840,14 +850,17 @@ async def run_mission():
                 
                 # Rule 4: Handoff Kamera
                 if front_status == "LOCKED" and front_class in ["Landing path", "Aruco"]:
-                    if not has_seen_target:
-                        blind_start_x = DRONE_X
-                        blind_start_y = DRONE_Y
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
                     has_seen_target = True
                     timeout_counter = 0
                     last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
-                    await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                    
+                    if abs(front_err_x) > 40:
+                        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                    else:
+                        await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Blind spot creep
                     dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2)
