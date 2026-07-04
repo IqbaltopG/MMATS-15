@@ -395,7 +395,7 @@ async def run_mission():
         elif state_phase == "YAW_LEFT_TRIPLE_1":
             timeout_counter += 1
             await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=-15.0)
-            if front_status == "LOCKED" and front_class == "Tripple Gate" and front_confident > 0.5:
+            if front_status == "LOCKED" and front_class == "Tripple Gate" and front_area > 5000:
                 print(f"[AUTOPILOT] Triple Gate terlihat (Area: {front_area})! Memulai approach...")
                 state_phase = "FIND_TRIPLE_GATE_1"
                 timeout_counter = 0
@@ -570,8 +570,8 @@ async def run_mission():
         elif state_phase == "YAW_RIGHT_TRIPLE_2":
             timeout_counter += 1
             await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=15.0)
-            if front_status == "LOCKED" and front_class == "Tripple Gate" and front_confident > 0.5:
-                print(f"[AUTOPILOT] Triple Gate 2 terlihat (Area: {front_area}, Conf: {front_confident:.2f})! Memulai approach...")
+            if front_status == "LOCKED" and front_class == "Tripple Gate" and front_area > 5000:
+                print(f"[AUTOPILOT] Triple Gate 2 terlihat (Area: {front_area})! Memulai approach...")
                 state_phase = "TRIPLE_GATE_2"
                 timeout_counter = 0
 
