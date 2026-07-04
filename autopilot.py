@@ -110,8 +110,8 @@ async def run_mission():
                 if front_area < 25000:
                     fwd_cmd = 0.8
                     strafe_cmd = front_err_x * kp_yaw
-                    z_err = -1.0 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=1.0m Lock
+                    z_err = -0.8 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                 else:
                     if not altitude_locked:
                         # Belum nge-lock, kita hover dan presisi-kan
@@ -126,9 +126,9 @@ async def run_mission():
                             print("[AUTOPILOT] [GATE 1] Centered! ALTITUDE LOCKED. Going Pitbull...")
                     else:
                         # UDAH LOCK! Bodo amat sama error Y (Karna kalau maju drone nunduk dan bikin ilusi error Y)
-                        z_err = -1.0 - DRONE_Z
+                        z_err = -0.8 - DRONE_Z
 
-                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=1.0m Lock
+                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                         strafe_cmd = front_err_x * kp_yaw
                         if abs(front_err_x) > 40:
                             fwd_cmd = 0.0 # Kalo melenceng X-nya aja baru ngerem
@@ -155,7 +155,7 @@ async def run_mission():
                 if timeout_counter == 0:
                     await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 3.2: # PUNCH THROUGH INS
-                    z_err = -1.0 - DRONE_Z
+                    z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
                     
                     if timeout_counter % 10 == 0:
@@ -368,16 +368,16 @@ async def run_mission():
                 # Logic: Kalo masih jauh (Area < 12000), maju lurus aja sambil nge-yaw. Hindari Vertical Centering palsu.
                 if front_area < 12000:
                     fwd_cmd = 0.8
-                    z_err = -1.0 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=1.0m Lock
+                    z_err = -0.8 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                 else:
                     if abs(front_err_x) > 40:
                         fwd_cmd = 0.0
                         up_cmd = (front_err_y + 20) * kp_up
                     else:
                         fwd_cmd = 0.8
-                        z_err = -1.0 - DRONE_Z
-                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=1.0m Lock
+                        z_err = -0.8 - DRONE_Z
+                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                     
                 print(f"[AUTOPILOT] [TRIPLE GATE 1] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Yaw: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
@@ -408,7 +408,7 @@ async def run_mission():
                         strafe_cmd = (LIDAR_RIGHT_DIST - LIDAR_LEFT_DIST) * 0.05
                     
                     # Barometer / INS Altitude Hold
-                    z_err = -1.0 - DRONE_Z
+                    z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
                     
                     if timeout_counter % 10 == 0:
@@ -538,16 +538,16 @@ async def run_mission():
                 # Logic: Kalo masih jauh (Area < 12000), maju lurus aja sambil nge-yaw. Hindari Vertical Centering palsu.
                 if front_area < 12000:
                     fwd_cmd = 0.8
-                    z_err = -1.0 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=1.0m Lock
+                    z_err = -0.8 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                 else:
                     if abs(front_err_x) > 40:
                         fwd_cmd = 0.0
                         up_cmd = (front_err_y + 20) * kp_up
                     else:
                         fwd_cmd = 0.8
-                        z_err = -1.0 - DRONE_Z
-                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=1.0m Lock
+                        z_err = -0.8 - DRONE_Z
+                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                         
                 print(f"[AUTOPILOT] [TRIPLE GATE 2] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Yaw: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
@@ -578,7 +578,7 @@ async def run_mission():
                         strafe_cmd = (LIDAR_RIGHT_DIST - LIDAR_LEFT_DIST) * 0.05
                     
                     # Barometer / INS Altitude Hold
-                    z_err = -1.0 - DRONE_Z
+                    z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
                     
                     if timeout_counter % 10 == 0:
@@ -657,8 +657,8 @@ async def run_mission():
                 if front_area < 25000:
                     fwd_cmd = 0.8
                     strafe_cmd = front_err_x * kp_yaw
-                    z_err = -1.0 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=1.0m Lock
+                    z_err = -0.8 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                 else:
                     if not altitude_locked:
                         strafe_cmd = front_err_x * kp_yaw
@@ -671,9 +671,9 @@ async def run_mission():
                             altitude_locked = True
                             print("[AUTOPILOT] [FINAL GATE 1] Centered! ALTITUDE LOCKED. Going Pitbull...")
                     else:
-                        z_err = -1.0 - DRONE_Z
+                        z_err = -0.8 - DRONE_Z
 
-                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=1.0m Lock
+                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                         strafe_cmd = front_err_x * kp_yaw
                         if abs(front_err_x) > 40:
                             fwd_cmd = 0.0
@@ -698,7 +698,7 @@ async def run_mission():
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
                 elif dist_flown < 2.5: # PUNCH THROUGH INS
-                    z_err = -1.0 - DRONE_Z
+                    z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
                     await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
@@ -740,8 +740,8 @@ async def run_mission():
                 if front_area < 25000:
                     fwd_cmd = 0.8
                     strafe_cmd = front_err_x * kp_yaw
-                    z_err = -1.0 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=1.0m Lock
+                    z_err = -0.8 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                 else:
                     if not altitude_locked:
                         strafe_cmd = front_err_x * kp_yaw
@@ -753,9 +753,9 @@ async def run_mission():
                             altitude_locked = True
                             print("[AUTOPILOT] [FINAL GATE 2] Centered! ALTITUDE LOCKED. Going Pitbull...")
                     else:
-                        z_err = -1.0 - DRONE_Z
+                        z_err = -0.8 - DRONE_Z
 
-                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=1.0m Lock
+                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                         strafe_cmd = front_err_x * kp_yaw
                         if abs(front_err_x) > 40:
                             fwd_cmd = 0.0
@@ -780,11 +780,11 @@ async def run_mission():
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
                 elif dist_flown < 2.5: 
-                    z_err = -1.0 - DRONE_Z
+                    z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
                     await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
                 elif dist_flown < 4.2: 
-                    z_err = -1.0 - DRONE_Z
+                    z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
                     await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd - 0.8, yaw_deg_s=0.0)
                 else:
