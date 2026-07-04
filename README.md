@@ -117,3 +117,10 @@ A custom PyGame/MAVSDK script that bypasses QGroundControl to eliminate UDP port
 
 ### 4. Hardware-In-the-Loop Integration (`vision_test.py`)
 A standalone vision integration test that subscribes to the live GStreamer feed, runs the YOLO AI natively, and extracts exact X/Y centroid coordinates. Allows developers to manually fly the drone via `teleop.py` while visually confirming bounding box lock-ons via a live OpenCV dashboard.
+
+### 5. Simulation Time-Dilation (RTF Scaling)
+If you're running Gazebo SITL on a potato laptop, the physics engine is going to choke and run at a **30-40% Real-Time Factor (RTF)**. That means 10 seconds of Python code execution translates to only 3 seconds of actual drone movement. It's flying in extreme slow-motion.
+
+Because of this hardware bottleneck, the `timeout_counter` thresholds in `autopilot.py` have been massively **inflated**. If we didn't do this, the code would time out and reverse before the drone physically finishes crossing a camera blind spot or stopping over a pad. 
+
+**WARNING:** If you are running this on a beefy desktop that hits 100% RTF, or if you deploy this code to the actual physical drone in the real world, you **MUST scale down the timeouts** in `autopilot.py`. If you don't, your drone is going to hang in the air for 15 seconds like an idiot waiting for a timeout that's scaled for a lagging simulator. Adjust your code before you fly IRL.
