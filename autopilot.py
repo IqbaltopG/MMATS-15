@@ -401,7 +401,7 @@ async def run_mission():
                     mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw)) # Batasi yaw biar ga terlalu agresif
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
-                elif dist_flown < 2.5: # PUNCH THROUGH TUNNEL (INS Jarak 2.5m)
+                elif dist_flown < 3.8: # PUNCH THROUGH TUNNEL (INS Jarak 3.8m)
                     # Repulsion Force Field (LiDAR)
                     strafe_cmd = 0.0
                     if LIDAR_LEFT_DIST < 4.9 or LIDAR_RIGHT_DIST < 4.9:
@@ -412,7 +412,7 @@ async def run_mission():
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
                     
                     if timeout_counter % 10 == 0:
-                        print(f"[AUTOPILOT] [TRIPLE GATE 1] Blind Punch INS! Jarak: {dist_flown:.2f}/2.5m, Lidar Strafe: {strafe_cmd:.2f}, Z: {up_cmd:.2f}")
+                        print(f"[AUTOPILOT] [TRIPLE GATE 1] Blind Punch INS! Jarak: {dist_flown:.2f}/3.8m, Lidar Strafe: {strafe_cmd:.2f}, Z: {up_cmd:.2f}")
                         
                     await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
@@ -571,7 +571,7 @@ async def run_mission():
                     mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
-                elif dist_flown < 2.5: # PUNCH THROUGH TUNNEL (INS Jarak 2.5m)
+                elif dist_flown < 3.8: # PUNCH THROUGH TUNNEL (INS Jarak 3.8m)
                     # Repulsion Force Field (LiDAR)
                     strafe_cmd = 0.0
                     if LIDAR_LEFT_DIST < 4.9 or LIDAR_RIGHT_DIST < 4.9:
@@ -582,7 +582,7 @@ async def run_mission():
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
                     
                     if timeout_counter % 10 == 0:
-                        print(f"[AUTOPILOT] [TRIPLE GATE 2] Blind Punch INS! Jarak: {dist_flown:.2f}/2.5m, Lidar Strafe: {strafe_cmd:.2f}, Z: {up_cmd:.2f}")
+                        print(f"[AUTOPILOT] [TRIPLE GATE 2] Blind Punch INS! Jarak: {dist_flown:.2f}/3.8m, Lidar Strafe: {strafe_cmd:.2f}, Z: {up_cmd:.2f}")
                         
                     await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
