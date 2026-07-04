@@ -98,3 +98,17 @@ Sebelum mengirim *error log* ke grup, pastikan kalian sudah melakukan audit mand
 3. **"Error saat kompilasi / Make failed!"** -> Scroll terminal ke atas, cari baris MERAH pertama yang muncul. Jangan hanya melihat pesan *"Failed"* di akhir. Baca *log*-nya.
 
 > **RTFM (Read The Fucking Manual):** The instructions above are precise and tested. Execute them exactly as written.
+
+---
+
+## 👁️ AI Vision Microservice (YOLOv8 + Supervision)
+The system incorporates a highly optimized **YOLOv8 Nano** object detection model (`Krti_model.pt`) designed for edge CPU inference (Raspberry Pi 5). 
+
+### 1. Data Scraping (`data_collector.py`)
+Bypasses manual screenshotting by hooking directly into the drone's GStreamer UDP feed (`udpsrc port=5600`). Automatically scrapes high-fidelity training frames during manual flight.
+
+### 2. Manual Keyboard Teleop (`teleop.py`)
+A custom PyGame/MAVSDK script that bypasses QGroundControl to eliminate UDP port conflicts. Allows for precise, game-like manual flight control (`W A S D`, `Arrows`) to generate diverse datasets that mathematically harden the neural network against failure states.
+
+### 3. Hardware-In-the-Loop Integration (`vision_test.py`)
+A standalone vision integration test that subscribes to the live GStreamer feed, runs the YOLO AI natively, and uses **Roboflow Supervision** to extract exact X/Y centroid coordinates. Allows developers to manually fly the drone via `teleop.py` while visually confirming bounding box lock-ons via a live OpenCV dashboard.
