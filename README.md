@@ -101,14 +101,19 @@ Sebelum mengirim *error log* ke grup, pastikan kalian sudah melakukan audit mand
 
 ---
 
-## 👁️ AI Vision Microservice (YOLOv8 + Supervision)
-The system incorporates a highly optimized **YOLOv8 Nano** object detection model (`Krti_model.pt`) designed for edge CPU inference (Raspberry Pi 5). 
+## 👁️ MMATS-15 (Microservice Multisensor Autonomous Targetting System)
+Inspired by the decoupled, high-speed guidance systems of the AGM-114 and AIM-9 missiles, **MMATS-15** is our hyper-optimized visual targeting architecture. Built heavily on the **KISS (Keep It Simple, Stupid)** principle, it strips away bloated frameworks (like ROS2) in favor of raw UDP microservices.
 
-### 1. Data Scraping (`data_collector.py`)
-Bypasses manual screenshotting by hooking directly into the drone's GStreamer UDP feed (`udpsrc port=5600`). Automatically scrapes high-fidelity training frames during manual flight.
+The system incorporates a highly optimized **YOLOv8 Nano** object detection model (`Krti_model.pt`) designed for edge CPU inference (Raspberry Pi 5). Because we are constrained by hardware (budget laptops & edge CPUs), MMATS-15 is "Optimized by Design."
 
-### 2. Manual Keyboard Teleop (`teleop.py`)
+### 1. Zero-Cost Sensor Fusion (LiDAR + Bounding Box Area)
+To completely bypass the heavy network I/O and CPU bottleneck of processing 3D point clouds from a depth camera, MMATS-15 extracts the area of the YOLO bounding box `(bx2 - bx1) * (by2 - by1)` as a fast pseudo-depth metric. On the physical drone, this will be cross-referenced with a cheap downward LiDAR for 2-way verification, creating a zero-latency, aerospace-grade redundancy system.
+
+### 2. Data Scraping (`data_collector.py`)
+Bypasses manual screenshotting by hooking directly into the drone's GStreamer UDP feed (`udpsrc port=5600`). Automatically scrapes high-fidelity training frames during manual flight to bridge the domain gap between Gazebo SITL and cheap real-world camera lenses.
+
+### 3. Manual Keyboard Teleop (`teleop.py`)
 A custom PyGame/MAVSDK script that bypasses QGroundControl to eliminate UDP port conflicts. Allows for precise, game-like manual flight control (`W A S D`, `Arrows`) to generate diverse datasets that mathematically harden the neural network against failure states.
 
-### 3. Hardware-In-the-Loop Integration (`vision_test.py`)
-A standalone vision integration test that subscribes to the live GStreamer feed, runs the YOLO AI natively, and uses **Roboflow Supervision** to extract exact X/Y centroid coordinates. Allows developers to manually fly the drone via `teleop.py` while visually confirming bounding box lock-ons via a live OpenCV dashboard.
+### 4. Hardware-In-the-Loop Integration (`vision_test.py`)
+A standalone vision integration test that subscribes to the live GStreamer feed, runs the YOLO AI natively, and extracts exact X/Y centroid coordinates. Allows developers to manually fly the drone via `teleop.py` while visually confirming bounding box lock-ons via a live OpenCV dashboard.

@@ -1,10 +1,12 @@
 # Core Flight Stack
 mavsdk>=2.9.0
-
-# Math & Data Processing (For dynamic yaw and pathfinding)
-numpy>=1.24.0
-
-# Asynchronous operations & hardware comms fallback
-asyncio
 pyserial>=3.5
-opencv-python>=4.5.
+
+# Vision Microservice (AI & Bounding Boxes)
+opencv-python>=4.5.0
+ultralytics>=8.0.0
+supervision>=0.22.0
+
+# Math & Data Processing (Strictly pinned to avoid OpenCV/Matplotlib conflicts)
+numpy==1.26.4
+scipy==1.12.0
