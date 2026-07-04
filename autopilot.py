@@ -151,10 +151,6 @@ async def run_mission():
                 
                 if timeout_counter == 0:
                     await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
-                elif timeout_counter < 30: # DROP INTO THE OPENING
-                    if timeout_counter % 10 == 0:
-                        print(f"[AUTOPILOT] [GATE 1] Strafe Down hindari top bar! (Tick: {timeout_counter}/30)")
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=0.5, yaw_deg_s=0.0)
                 elif dist_flown < 3.2: # PUNCH THROUGH INS
                     if timeout_counter % 10 == 0:
                         print(f"[AUTOPILOT] [GATE 1] Punching blind! INS Jarak: {dist_flown:.2f}/3.2m")
@@ -680,8 +676,6 @@ async def run_mission():
                     mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
-                elif timeout_counter < 30: # DROP INTO OPENING
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=0.5, yaw_deg_s=0.0)
                 elif dist_flown < 2.5: # PUNCH THROUGH INS
                     await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 else:
@@ -759,8 +753,6 @@ async def run_mission():
                     mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
-                elif timeout_counter < 30: 
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=0.5, yaw_deg_s=0.0)
                 elif dist_flown < 2.5: 
                     await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 4.2: 
