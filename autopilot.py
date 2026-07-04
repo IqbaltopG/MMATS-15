@@ -199,8 +199,12 @@ async def run_mission():
                     # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah
                     dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2)
                     timeout_counter += 1
-                    if dist_flown > 1.8:
-                        print(f"[AUTOPILOT] Kebablasan ArUco 1 di blind spot! (Jarak INS: {dist_flown:.2f}m). Terbang mundur...")
+                    
+                    if dist_flown > 2.5:
+                        timeout_counter = 500 # Latch reverse state
+                        
+                    if timeout_counter >= 500:
+                        print(f"[AUTOPILOT] Kebablasan ArUco 1 di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
                         # Stutter creep to level pitch and scan straight down
@@ -315,8 +319,12 @@ async def run_mission():
                     # FALLBACK MEMORY: Blind spot creep
                     dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2)
                     timeout_counter += 1
-                    if dist_flown > 1.8:
-                        print(f"[AUTOPILOT] Kebablasan ArUco 2 di blind spot! (Jarak INS: {dist_flown:.2f}m). Terbang mundur...")
+                    
+                    if dist_flown > 2.5:
+                        timeout_counter = 500 # Latch reverse state
+                        
+                    if timeout_counter >= 500:
+                        print(f"[AUTOPILOT] Kebablasan ArUco 2 di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                     else:
                         # Stutter creep to level pitch and scan straight down
@@ -472,8 +480,12 @@ async def run_mission():
                     # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah. Creep pelan pakai memori yaw.
                     dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2)
                     timeout_counter += 1
-                    if dist_flown > 1.8:
-                        print(f"[AUTOPILOT] Kebablasan Drop Box di blind spot! (Jarak INS: {dist_flown:.2f}m). Terbang mundur...")
+                    
+                    if dist_flown > 2.5:
+                        timeout_counter = 500 # Latch reverse state
+                        
+                    if timeout_counter >= 500:
+                        print(f"[AUTOPILOT] Kebablasan Drop Box di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
                         # Stutter creep to level pitch and scan straight down
@@ -840,8 +852,12 @@ async def run_mission():
                     # FALLBACK MEMORY: Blind spot creep
                     dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2)
                     timeout_counter += 1
-                    if dist_flown > 1.8:
-                        print(f"[AUTOPILOT] Kebablasan Landing Pad di blind spot! (Jarak INS: {dist_flown:.2f}m). Terbang mundur...")
+                    
+                    if dist_flown > 2.5:
+                        timeout_counter = 500 # Latch reverse state
+                        
+                    if timeout_counter >= 500:
+                        print(f"[AUTOPILOT] Kebablasan Landing Pad di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
                         # Stutter creep to level pitch and scan straight down
