@@ -12,3 +12,11 @@ __pycache__/
 
 # Log OS
 .DS_Store
+
+# LLM Context
+CONTEXT.md
+USER_PERSONA.md
+
+# Symlinks
+px4_core
+px4_core/

@@ -1,131 +1,113 @@
-import os
 import asyncio
-import math
-import time
 from mavsdk import System
-from dotenv import load_dotenv
+from mavsdk.offboard import VelocityBodyYawspeed, OffboardError
 
-class DroneController:
+class OtotDrone:
     def __init__(self):
-        load_dotenv()
         self.drone = System()
-        
-        # Load variabel env ke dalam properties class
-        self.titik_target = [
-            (float(os.getenv("TARGET_1_LAT", 0)), float(os.getenv("TARGET_1_LON", 0))),
-            (float(os.getenv("TARGET_2_LAT", 0)), float(os.getenv("TARGET_2_LON", 0))),
-        ]
-        self.koordinat_flp = (float(os.getenv("FLP_LAT", 0)), float(os.getenv("FLP_LON", 0)))
-        self.target_alt_agl = 10.0
 
-    @staticmethod
-    def get_distance_in_meters(coord1, coord2):
-        R = 6371000.0
-        lat1, lon1 = coord1
-        lat2, lon2 = coord2
-        lat1_rad, lat2_rad = math.radians(lat1), math.radians(lat2)
-        dlat_rad = lat2_rad - lat1_rad
-        dlon_rad = math.radians(lon2) - math.radians(lon1)
-        a = math.sin(dlat_rad / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon_rad / 2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        return R * c
-
-    @staticmethod
-    def get_bearing(coord1, coord2):
-        lat1, lon1 = math.radians(coord1[0]), math.radians(coord1[1])
-        lat2, lon2 = math.radians(coord2[0]), math.radians(coord2[1])
-        dlon_rad = lon2 - lon1
-        x = math.sin(dlon_rad) * math.cos(lat2)
-        y = math.cos(lat1) * math.sin(lat2) - (math.sin(lat1) * math.cos(lat2) * math.cos(dlon_rad))
-        initial_bearing = math.atan2(x, y)
-        return (math.degrees(initial_bearing) + 360) % 360
-
-    async def connect_and_arm(self):
-        await self.drone.connect(system_address="udp://:14540")
+    async def connect(self, system_address="udp://:14540"):
+        await self.drone.connect(system_address=system_address)
         print("Waiting for drone to connect...")
-        async for state in self.drone.core.connection_state():
-            if state.is_connected:
-                print("Drone connected!")
-                break
-
-        print("Waiting for global position estimate...")
-        async for health in self.drone.telemetry.health():
-            if health.is_global_position_ok:
-                print("Global position estimate OK")
-                break
-
-        async for home in self.drone.telemetry.home():
-            self.koordinat_flp = (home.latitude_deg, home.longitude_deg)
-            print(f"[!] Titik Landing disinkronkan: {self.koordinat_flp}")
-            break
-
-        print("Mempersiapkan motor... (ARMING)")
-        await self.drone.action.arm()
-        print("Mengudara... (TakeOFF)")
-        await self.drone.action.takeoff()
-        await asyncio.sleep(15)
-
-    async def lepaskan_muatan(self, index):
-        safe_index = index + 1 
-        if safe_index > 6:
-            return
-        print(f"Release muatan ke-{safe_index}... Eksekusi!")
         try:
-            await self.drone.action.set_actuator(safe_index, 1.0) 
-            await asyncio.sleep(2) 
-            await self.drone.action.set_actuator(safe_index, -1.0) 
-        except Exception as e:
-            print("Error aktuator diabaikan (normal di SITL).")
-        await asyncio.sleep(5)
-
-    async def misi_outdoor(self):
-        print("\n--- INITIATING OUTDOOR MISSION ---")
-        async for terrain_info in self.drone.telemetry.position():
-            ground_amsl = terrain_info.absolute_altitude_m - terrain_info.relative_altitude_m
-            break 
-
-        target_alt_amsl = ground_amsl + self.target_alt_agl
-
-        for i, (lat, lon) in enumerate(self.titik_target):
-            async for pos_awal in self.drone.telemetry.position():
-                current_pos_awal = (pos_awal.latitude_deg, pos_awal.longitude_deg)
-                break 
-                
-            target_pos = (lat, lon)
-            target_yaw = self.get_bearing(current_pos_awal, target_pos)
+            async def check_connection():
+                async for state in self.drone.core.connection_state():
+                    if state.is_connected:
+                        print("[+] Vehicle connected via MAVLink!")
+                        break
+            await asyncio.wait_for(check_connection(), timeout=10.0)
             
-            print(f"OTW Target {i+1} | Hadap: {target_yaw:.1f} derajat")
-            await self.drone.action.goto_location(lat, lon, target_alt_amsl, target_yaw)
-            
-            last_print = 0
-            async for position in self.drone.telemetry.position():
-                current_pos = (position.latitude_deg, position.longitude_deg)
-                distance = self.get_distance_in_meters(current_pos, target_pos)
-                
-                if time.time() - last_print >= 1.0:
-                    print(f"Jarak ke target {i+1}: {distance:.2f} meter")
-                    last_print = time.time()
-                    
-                if distance < 2.0:
-                    print(f"[!] Tiba di Target Outdoor {i+1}")
-                    break 
-            
-            await self.lepaskan_muatan(i + 1) 
+            print("[*] Disabling SITL Failsafes (Battery, Datalink, RC)...")
+            await self.drone.param.set_param_int("COM_LOW_BAT_ACT", 0)  # 0 = Warning only (no RTL)
+            await self.drone.param.set_param_int("NAV_DLL_ACT", 0)      # 0 = Disable Datalink failsafe
+            await self.drone.param.set_param_int("NAV_RCL_ACT", 0)      # 0 = Disable RC Loss failsafe
+            print("[+] SITL Failsafes Disabled. Safe to test!")
 
-    async def rtb(self):
-        print("\n--- MISI BERES: RTB ---")
-        async for pos_pulang in self.drone.telemetry.position():
-            current_pos_pulang = (pos_pulang.latitude_deg, pos_pulang.longitude_deg)
-            ground_amsl = pos_pulang.absolute_altitude_m - pos_pulang.relative_altitude_m
-            break
+        except asyncio.TimeoutError:
+            print("\n[-] CRITICAL: Drone connection timed out! Is PX4 SITL / Gazebo running?")
+            raise SystemExit(1)
             
-        rtb_yaw = self.get_bearing(current_pos_pulang, self.koordinat_flp)
-        await self.drone.action.goto_location(self.koordinat_flp[0], self.koordinat_flp[1], ground_amsl + self.target_alt_agl, rtb_yaw)
-
-        async for position in self.drone.telemetry.position():
-            current_pos = (position.latitude_deg, position.longitude_deg)
-            if self.get_distance_in_meters(current_pos, self.koordinat_flp) < 1.0:
-                print("Tiba di atas titik landing. Mendarat.")
+        print("Waiting for EKF/GPS lock...")
+        async for health in self.drone.telemetry.health():
+            if health.is_global_position_ok and health.is_home_position_ok:
+                print("[+] EKF/GPS locked. Home position is calibrated (0.0m)!")
                 break
+            print("Waiting for EKF/GPS lock...")
+            await asyncio.sleep(1)
+
+    async def takeoff_offboard(self, target_alt_m=2.5):
+        print("Arming motors...")
+        await self.drone.action.arm()
+
+        print("Setting initial offboard setpoint...")
+        # Send a 0-velocity setpoint before starting offboard (mandatory for safety)
+        await self.drone.offboard.set_velocity_body(
+            VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0)
+        )
+
+        print("Engaging Offboard Mode...")
+        try:
+            await self.drone.offboard.start()
+        except OffboardError as error:
+            print(f"Offboard start failed: {error._result.result}")
+            await self.drone.action.disarm()
+            return
+
+        print(f"Taking off via Offboard Velocity (Ascending to {target_alt_m}m)...")
+        # Negative down_m_s means ascending in NED frame
+        await self.set_velocity(0.0, 0.0, -1.5, 0.0)
+        
+        print("Polling telemetry for altitude verification...")
+        
+        # Monitor altitude in a background task so it doesn't block the Heartbeat
+        current_alt = 0.0
+        async def monitor_altitude():
+            nonlocal current_alt
+            async for position in self.drone.telemetry.position():
+                current_alt = position.relative_altitude_m
                 
+        alt_task = asyncio.create_task(monitor_altitude())
+
+        while current_alt < target_alt_m:
+            await self.set_velocity(0.0, 0.0, -1.5, 0.0)
+            await asyncio.sleep(0.1)  # Strict 10Hz Keep-Alive Heartbeat
+            
+        alt_task.cancel()
+        
+        print(f"[+] Safe hover altitude reached: {current_alt:.2f}m")
+        print("Stabilizing physics in hover...")
+        for _ in range(20):
+            await self.set_velocity(0.0, 0.0, 0.0, 0.0)
+            await asyncio.sleep(0.1)
+            
+    async def set_velocity(self, forward_m_s, right_m_s, down_m_s, yaw_deg_s):
+        """ Commands Body-frame Velocities (GPS-Denied Navigation) """
+        await self.drone.offboard.set_velocity_body(
+            VelocityBodyYawspeed(forward_m_s, right_m_s, down_m_s, yaw_deg_s)
+        )
+
+    async def lepaskan_muatan(self):
+        print(">>> Actuating servo to drop medkit...")
+        try:
+            # Target actuator index 1 for payload drop mechanism
+            await self.drone.action.set_actuator(1, 1.0)
+            # Heartbeat Keep-Alive while dropping payload
+            for _ in range(20):
+                await self.set_velocity(0.0, 0.0, 0.0, 0.0)
+                await asyncio.sleep(0.1)
+            await self.drone.action.set_actuator(1, -1.0)
+        except Exception as e:
+            print(f"[!] Actuator error ignored (normal in basic SITL): {e}")
+        print(">>> Medkit Payload Dropped!")
+
+    async def land(self):
+        print("Stopping Offboard Mode and Landing...")
+        await self.drone.offboard.stop()
+        await asyncio.sleep(0.5)  # Buffer to allow mode transition to settle
         await self.drone.action.land()
+        
+        print("Waiting for drone to physically touch down...")
+        async for in_air in self.drone.telemetry.in_air():
+            if not in_air:
+                print("[+] Touchdown confirmed! Safe to shutdown.")
+                break
