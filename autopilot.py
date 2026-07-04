@@ -236,15 +236,16 @@ async def run_mission():
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
-                    if down_class == "Aruco":
-                        timeout_counter += 1
-                        if timeout_counter > 100: # Stabil di tengah selama 10 detik nyata (RTF 30%)
-                            print("[AUTOPILOT] Presisi WP1 Tercapai! Mengikuti Straight Line menuju WP2...")
-                            state_phase = "FOLLOW_LINE_TO_WP2"
-                            timeout_counter = 0
-                            has_seen_target = False
-                    else:
+                    timeout_counter += 1
+                    
+                    # Fast completion if inner marker is seen, slow fallback if only outer area is seen
+                    completion_threshold = 50 if down_class == "Aruco" else 150
+                    
+                    if timeout_counter > completion_threshold: 
+                        print("[AUTOPILOT] Presisi WP1 Tercapai! Mengikuti Straight Line menuju WP2...")
+                        state_phase = "FOLLOW_LINE_TO_WP2"
                         timeout_counter = 0
+                        has_seen_target = False
                 else:
                     timeout_counter = 0
             else:
@@ -362,15 +363,16 @@ async def run_mission():
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
-                    if down_class == "Aruco":
-                        timeout_counter += 1
-                        if timeout_counter > 100: # Stabil 10 detik nyata (RTF 30%)
-                            print("[AUTOPILOT] Presisi WP2 Tercapai! Mutar kiri nyari Triple Gate 1...")
-                            state_phase = "YAW_LEFT_TRIPLE_1"
-                            timeout_counter = 0
-                            has_seen_target = False
-                    else:
+                    timeout_counter += 1
+                    
+                    # Fast completion if inner marker is seen, slow fallback if only outer area is seen
+                    completion_threshold = 50 if down_class == "Aruco" else 150
+                    
+                    if timeout_counter > completion_threshold:
+                        print("[AUTOPILOT] Presisi WP2 Tercapai! Mutar kiri nyari Triple Gate 1...")
+                        state_phase = "YAW_LEFT_TRIPLE_1"
                         timeout_counter = 0
+                        has_seen_target = False
                 else:
                     timeout_counter = 0
             else:
