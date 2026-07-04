@@ -200,7 +200,9 @@ async def run_mission():
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
                         # mem_yaw disabled during blind spot to prevent spiraling
-                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                        # Stutter creep to level pitch and scan straight down
+                        fwd_creep = 0.3 if timeout_counter % 20 < 10 else 0.0
+                        await flight.send_body_velocity(drone, forward_m_s=fwd_creep, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
 
@@ -313,7 +315,9 @@ async def run_mission():
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                     else:
                         # mem_yaw disabled during blind spot to prevent spiraling
-                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
+                        # Stutter creep to level pitch and scan straight down
+                        fwd_creep = 0.3 if timeout_counter % 20 < 10 else 0.0
+                        await flight.send_body_velocity(drone, forward_m_s=fwd_creep, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
 
@@ -472,7 +476,9 @@ async def run_mission():
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
                         # mem_yaw disabled during blind spot to prevent spiraling
-                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                        # Stutter creep to level pitch and scan straight down
+                        fwd_creep = 0.3 if timeout_counter % 20 < 10 else 0.0
+                        await flight.send_body_velocity(drone, forward_m_s=fwd_creep, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 else:
                     # Belum keliatan, jalan lurus pelan sambil nanjak ke ketinggian operasi
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
@@ -842,7 +848,9 @@ async def run_mission():
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
                         # mem_yaw disabled during blind spot to prevent spiraling
-                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                        # Stutter creep to level pitch and scan straight down
+                        fwd_creep = 0.3 if timeout_counter % 20 < 10 else 0.0
+                        await flight.send_body_velocity(drone, forward_m_s=fwd_creep, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
 
