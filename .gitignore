@@ -20,3 +20,9 @@ USER_PERSONA.md
 # Symlinks
 px4_core
 px4_core/
+
+# YOLO Dataset (Heavy Image Files)
+dataset/
+
+# AI Models
+*.pt

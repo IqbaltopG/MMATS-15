@@ -62,6 +62,8 @@ class MataDrone:
         print("[+] Vision Module: UDP Stream monitor started.")
 
         previous_mode = self.current_mode
+        frame_count = 0
+        fps_start_time = time.time()
 
         while self.is_running:
             # Explicitly select active camera stream controlled by main.py
@@ -186,6 +188,14 @@ class MataDrone:
             # if mask is not None:
             #     cv2.imshow("HSV Mask", mask)
             # cv2.waitKey(1)
+            
+            frame_count += 1
+            if frame_count % 30 == 0:
+                elapsed = time.time() - fps_start_time
+                fps = 30 / elapsed
+                # Only print FPS periodically so it doesn't spam the console too badly
+                print(f"[VISION] Processing FPS: {fps:.1f} | Mode: {self.current_mode}")
+                fps_start_time = time.time()
 
             time.sleep(1 / 30)  # Throttle to ~30 FPS
 
