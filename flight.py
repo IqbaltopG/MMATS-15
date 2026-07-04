@@ -75,7 +75,7 @@ class DroneController:
             await asyncio.sleep(2) 
             await self.drone.action.set_actuator(safe_index, -1.0) 
         except Exception as e:
-            print("Abaikan error aktuator di SITL!")
+            print("Error aktuator diabaikan (normal di SITL).")
         await asyncio.sleep(5)
 
     async def misi_outdoor(self):
