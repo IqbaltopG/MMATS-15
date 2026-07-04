@@ -540,16 +540,15 @@ async def run_mission():
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
                 
                 if abs(down_err_x) < 20 and abs(down_err_y) < 20:
-                    timeout_counter += 1
-                    
-                    # Fast completion if Red Box is seen, slow fallback if only Aruco Area is seen
-                    completion_threshold = 100 if down_class in ["Red Drop Box", "RedDrop Box"] else 200
-                    
-                    if timeout_counter > completion_threshold:
-                        print("[AUTOPILOT] Medkit Dropped. Yaw Kanan nyari Triple Gate 2...")
-                        state_phase = "YAW_RIGHT_TRIPLE_2"
+                    if down_class in ["Red Drop Box", "RedDrop Box"]:
+                        timeout_counter += 1
+                        if timeout_counter > 100:
+                            print("[AUTOPILOT] Medkit Dropped. Yaw Kanan nyari Triple Gate 2...")
+                            state_phase = "YAW_RIGHT_TRIPLE_2"
+                            timeout_counter = 0
+                            has_seen_target = False
+                    else:
                         timeout_counter = 0
-                        has_seen_target = False
                 else:
                     timeout_counter = 0
             else:
