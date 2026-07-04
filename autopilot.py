@@ -235,11 +235,9 @@ async def run_mission():
                     timeout_counter = 0
             else:
                 timeout_counter += 1
-                if timeout_counter > 30:
-                    print("[AUTOPILOT] WP1 Hilang! Kembali ke FIND_ARUCO_1")
-                    state_phase = "FIND_ARUCO_1"
-                    timeout_counter = 0
-                    has_seen_target = False
+                if timeout_counter > 50:
+                    print("[AUTOPILOT] WP1 Hilang! Hovering di tempat...")
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Rebound brake
                     fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
@@ -349,11 +347,9 @@ async def run_mission():
                     timeout_counter = 0
             else:
                 timeout_counter += 1
-                if timeout_counter > 30:
-                    print("[AUTOPILOT] WP2 Hilang! Kembali ke FIND_ARUCO_2")
-                    state_phase = "FIND_ARUCO_2"
-                    timeout_counter = 0
-                    has_seen_target = False
+                if timeout_counter > 50:
+                    print("[AUTOPILOT] WP2 Hilang! Hovering di tempat...")
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Rebound brake
                     fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
@@ -518,11 +514,9 @@ async def run_mission():
                     timeout_counter = 0
             else:
                 timeout_counter += 1
-                if timeout_counter > 30:
-                    print("[AUTOPILOT] Drop Box Hilang dari kamera bawah! Kembali ke FIND_DROPBOX")
-                    state_phase = "FIND_DROPBOX"
-                    timeout_counter = 0
-                    has_seen_target = False
+                if timeout_counter > 50:
+                    print("[AUTOPILOT] Drop Box Hilang dari kamera bawah! Hovering di tempat...")
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 elif has_seen_target:
                     # FALLBACK MEMORY DOWN CAMERA: Terbang balik ke kordinat terakhir kali keliatan!
                     fwd_cmd = max(-0.2, min(0.2, last_down_err_y * 0.0015))
@@ -889,11 +883,9 @@ async def run_mission():
                     timeout_counter = 0
             else:
                 timeout_counter += 1
-                if timeout_counter > 100:
-                    print("[AUTOPILOT] Landing Pad Hilang! Kembali ke FIND_LANDING_PAD")
-                    state_phase = "FIND_LANDING_PAD"
-                    timeout_counter = 0
-                    has_seen_target = False
+                if timeout_counter > 50:
+                    print("[AUTOPILOT] Landing Pad Hilang! Hovering di tempat...")
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif has_seen_target:
                     # FALLBACK MEMORY DOWN CAMERA
                     fwd_cmd = max(-0.2, min(0.2, last_down_err_y * 0.0015))
