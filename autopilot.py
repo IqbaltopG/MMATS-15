@@ -519,7 +519,7 @@ async def run_mission():
         # PHASE 6.5: CENTER_DROPBOX (Mensejajarkan Drone dengan Drop Box)
         # ---------------------------------------------------------
         elif state_phase == "CENTER_DROPBOX":
-            if down_status == "LOCKED" and down_class in ["Red Drop Box", "RedDrop Box"]:
+            if down_status == "LOCKED" and down_class in ["Red Drop Box", "RedDrop Box", "Aruco Area"]:
                 has_seen_target = True
                 last_down_err_x = down_err_x
                 last_down_err_y = down_err_y
@@ -541,7 +541,11 @@ async def run_mission():
                 
                 if abs(down_err_x) < 20 and abs(down_err_y) < 20:
                     timeout_counter += 1
-                    if timeout_counter > 100: # Stabil 10 detik nyata (RTF 30%)
+                    
+                    # Fast completion if Red Box is seen, slow fallback if only Aruco Area is seen
+                    completion_threshold = 100 if down_class in ["Red Drop Box", "RedDrop Box"] else 200
+                    
+                    if timeout_counter > completion_threshold:
                         print("[AUTOPILOT] Medkit Dropped. Yaw Kanan nyari Triple Gate 2...")
                         state_phase = "YAW_RIGHT_TRIPLE_2"
                         timeout_counter = 0
@@ -551,8 +555,9 @@ async def run_mission():
             else:
                 timeout_counter += 1
                 if timeout_counter > 50:
-                    print("[AUTOPILOT] Drop Box Hilang dari kamera bawah! Hovering di tempat...")
-                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    print("[AUTOPILOT] Drop Box Hilang dari kamera bawah! Kembali ke FIND_DROPBOX...")
+                    state_phase = "FIND_DROPBOX"
+                    timeout_counter = 0
                 elif has_seen_target:
                     # FALLBACK MEMORY DOWN CAMERA: Terbang balik ke kordinat terakhir kali keliatan!
                     fwd_cmd = max(-0.2, min(0.2, last_down_err_y * 0.0015))
