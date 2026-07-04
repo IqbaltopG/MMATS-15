@@ -1,0 +1,85 @@
+import asyncio
+from mavsdk import System
+
+# --- KONFIGURASI TARGET & HARDWARE ---
+# Target lokasi drop muatan outdoor (DPMO) [cite: 110, 111]
+titik_target = [
+    (-1.259304, 116.862317), # Pojok 1
+    (-1.258282, 116.862576), # Pojok 2
+]
+
+# Koordinat Final Landing Pad (FLP) di tengah arena [cite: 116, 117]
+koordinat_flp = (-1.258800, 116.862450)
+
+async def croot_muatan(pler, index):
+    """
+    Fungsi gerakin servo. 
+    Di MAVSDK, index biasanya 1-6 untuk index actuator (1-based, bukan 0-based).
+    """
+    # Karena loop lu mulai dari 0, kita shift index-nya biar mulai dari 1
+    safe_index = index + 1 
+    
+    # MAVSDK action.set_actuator() valid range index biasanya 1-6
+    # Pastikan safe_index tidak lebih dari 6
+    if safe_index > 6:
+         print(f"Index {safe_index} out of bounds, skip actuation")
+         return
+
+    print(f"Release muatan ke-{safe_index}... CROOT!")
+    
+    try:
+        # Coba set actuator, value biasanya -1.0 sampai 1.0
+        await pler.action.set_actuator(safe_index, 1.0) 
+        await asyncio.sleep(2) # Delay biar muatan beneran lepas 
+        
+        # Balikin ke posisi 0.0 atau -1.0 (Closed)
+        await pler.action.set_actuator(safe_index, -1.0) 
+        print("Servo locked kembali.")
+    except Exception as e:
+        # Pake try-except biar kalau error di SITL, misi nggak langsung berhenti
+        print(f"FAILED to set actuator: {e}")
+        print("LANJUT TERBANG, abaikan error aktuator di SITL!")
+async def run():
+    pler = System()
+    await pler.connect(system_address="udp://:14540")
+
+    print("Waiting for drone to connect...")
+    async for state in pler.core.connection_state():
+        if state.is_connected:
+            print("Drone connected!")
+            break
+    print("Buka celana... (ARMING)")
+    await pler.action.arm()
+    print("Aku crooott.... (TakeOFF)")
+    await pler.action.takeoff()
+    await asyncio.sleep(10)
+
+    # --- BAGIAN LOOPING MISI OUTDOOR ---
+    # Lu harus ambil Absolute Altitude tanahnya dulu biar nambahnya akurat
+    target_ketinggian_terbang_agl = 10.0 # 10 meter dari tanah
+    
+    async for terrain_info in pler.telemetry.position():
+        absolute_alt = terrain_info.absolute_altitude_m
+        break # Ambil sekali aja pas lagi ngambang
+
+    target_alt_amsl = absolute_alt + target_ketinggian_terbang_agl
+
+    for i, (lat, lon) in enumerate(titik_target):
+        print(f"OTW Target {i+1}: {lat}, {lon} di ketinggian {target_alt_amsl} AMSL")
+        
+        # Terbang ke target pake AMSL yang udah dikalkulasi
+        await pler.action.goto_location(lat, lon, target_alt_amsl, 0.0)
+        await asyncio.sleep(15)
+        
+        await croot_muatan(pler, i)
+        
+    # ... Lanjut ke script Landing lu ...
+    # MISI SELESAI: Landing di FLP (Tengah Lapangan) [cite: 146]
+    print("Misi beres, landing di FLP tengah.")
+    lat_f, lon_f = koordinat_flp
+    await pler.action.goto_location(lat_f, lon_f, 5.0, 0.0)
+    await asyncio.sleep(10)
+    await pler.action.land()
+
+if __name__ == "__main__":
+    asyncio.run(run())
