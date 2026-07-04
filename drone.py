@@ -73,8 +73,13 @@ async def lepaskan_muatan(drone, index):
     except Exception as e:
         print(f"FAILED to set actuator: {e}")
         print("LANJUT TERBANG, abaikan error aktuator di SITL!")
+        
+    print("Hovering (diam di tempat) selama 5 detik sebelum melanjutkan pergerakan...")
+    await asyncio.sleep(5)
 
 async def run():
+    global koordinat_flp
+
     drone = System()
     await drone.connect(system_address="udp://:14540")
 
@@ -89,6 +94,12 @@ async def run():
         if health.is_global_position_ok:
             print("Global position estimate OK")
             break
+
+    # Kunci lokasi awal (spawn) dari Telemetry dan timpa sebagai titik Landing (FLP)
+    async for home in drone.telemetry.home():
+        koordinat_flp = (home.latitude_deg, home.longitude_deg)
+        print(f"[!] Titik Landing (FLP) disinkronkan ke lokasi spawn: {koordinat_flp[0]}, {koordinat_flp[1]}")
+        break
 
     print("Mempersiapkan motor... (ARMING)")
     await drone.action.arm()
@@ -163,7 +174,8 @@ async def run():
         
     # Return to Base
     print("\n--- MISI BERES: RTB (Return to Base) ---")
-    print(f"Kembali ke FLP di {koordinat_flp[0]}, {koordinat_flp[1]}")
+
+    print(f"Kembali ke Home Base (FLP) di {koordinat_flp[0]}, {koordinat_flp[1]}")
 
     # Ambil posisi saat ini sebelum RTB
     async for pos_pulang in drone.telemetry.position():
