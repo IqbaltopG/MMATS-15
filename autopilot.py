@@ -191,12 +191,12 @@ async def run_mission():
                 elif has_seen_target:
                     # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah
                     timeout_counter += 1
-                    if timeout_counter > 50:
+                    if timeout_counter > 80:
                         print("[AUTOPILOT] Kebablasan ArUco 1 di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
-                        mem_yaw = last_front_err_x * kp_yaw
-                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
+                        # mem_yaw disabled during blind spot to prevent spiraling
+                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
 
@@ -288,12 +288,12 @@ async def run_mission():
                 elif has_seen_target:
                     # FALLBACK MEMORY: Blind spot creep
                     timeout_counter += 1
-                    if timeout_counter > 50:
+                    if timeout_counter > 80:
                         print("[AUTOPILOT] Kebablasan ArUco 2 di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                     else:
-                        mem_yaw = last_front_err_x * kp_yaw
-                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
+                        # mem_yaw disabled during blind spot to prevent spiraling
+                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
 
@@ -398,9 +398,9 @@ async def run_mission():
                 if timeout_counter == 0:
                     # FALLBACK MEMORY: Jangan hover diam! Kalau drift malah hilang.
                     # Creep maju pelan (0.5m/s) dan arahkan yaw ke posisi X terakhir yang diingat.
-                    mem_yaw = last_front_err_x * kp_yaw
+                    # mem_yaw disabled during blind spot to prevent spiraling
                     mem_yaw = max(-15.0, min(15.0, mem_yaw)) # Batasi yaw biar ga terlalu agresif
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
+                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 3.8: # PUNCH THROUGH TUNNEL (INS Jarak 3.8m)
                     # Repulsion Force Field (LiDAR)
                     strafe_cmd = 0.0
@@ -447,12 +447,12 @@ async def run_mission():
                 elif has_seen_target:
                     # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah. Creep pelan pakai memori yaw.
                     timeout_counter += 1
-                    if timeout_counter > 50:
+                    if timeout_counter > 80:
                         print("[AUTOPILOT] Kebablasan Drop Box di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
-                        mem_yaw = last_front_err_x * kp_yaw
-                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
+                        # mem_yaw disabled during blind spot to prevent spiraling
+                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 else:
                     # Belum keliatan, jalan lurus pelan sambil nanjak ke ketinggian operasi
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
@@ -568,9 +568,9 @@ async def run_mission():
                 if timeout_counter == 0:
                     # FALLBACK MEMORY: Jangan hover diam! Kalau drift malah hilang.
                     # Creep maju pelan (0.5m/s) dan arahkan yaw ke posisi X terakhir yang diingat.
-                    mem_yaw = last_front_err_x * kp_yaw
+                    # mem_yaw disabled during blind spot to prevent spiraling
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
+                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 3.8: # PUNCH THROUGH TUNNEL (INS Jarak 3.8m)
                     # Repulsion Force Field (LiDAR)
                     strafe_cmd = 0.0
@@ -621,7 +621,7 @@ async def run_mission():
                 state_phase = "FIND_FINAL_GATE_1"
                 timeout_counter = 0
             
-            if timeout_counter > 50: # ~5 detik (Maksimum turning limit)
+            if timeout_counter > 80: # ~5 detik (Maksimum turning limit)
                 print("[AUTOPILOT] Timeout belok! Mencari gawang final 1 secara manual...")
                 state_phase = "FIND_FINAL_GATE_1"
                 timeout_counter = 0
@@ -694,9 +694,9 @@ async def run_mission():
                 
                 if timeout_counter == 0:
                     # FALLBACK MEMORY
-                    mem_yaw = last_front_err_x * kp_yaw
+                    # mem_yaw disabled during blind spot to prevent spiraling
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
+                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 2.5: # PUNCH THROUGH INS
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
@@ -776,9 +776,9 @@ async def run_mission():
                 
                 if timeout_counter == 0:
                     # FALLBACK MEMORY
-                    mem_yaw = last_front_err_x * kp_yaw
+                    # mem_yaw disabled during blind spot to prevent spiraling
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
+                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 2.5: 
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
@@ -817,12 +817,12 @@ async def run_mission():
                 elif has_seen_target:
                     # FALLBACK MEMORY: Blind spot creep
                     timeout_counter += 1
-                    if timeout_counter > 50:
+                    if timeout_counter > 80:
                         print("[AUTOPILOT] Kebablasan Landing Pad di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
-                        mem_yaw = last_front_err_x * kp_yaw
-                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
+                        # mem_yaw disabled during blind spot to prevent spiraling
+                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
 
