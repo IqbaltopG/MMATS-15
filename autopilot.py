@@ -152,9 +152,12 @@ async def run_mission():
                 if timeout_counter == 0:
                     await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 3.2: # PUNCH THROUGH INS
+                    z_err = -1.5 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    
                     if timeout_counter % 10 == 0:
-                        print(f"[AUTOPILOT] [GATE 1] Punching blind! INS Jarak: {dist_flown:.2f}/3.2m")
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                        print(f"[AUTOPILOT] [GATE 1] Punching blind! INS Jarak: {dist_flown:.2f}/3.2m, Z: {up_cmd:.2f}")
+                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
                     print(f"[AUTOPILOT] Lolos Gate 1 (Jarak INS: {dist_flown:.2f}m)! Mencari Aruco 1...")
                     state_phase = "FIND_ARUCO_1"
@@ -399,10 +402,14 @@ async def run_mission():
                     if LIDAR_LEFT_DIST < 4.9 or LIDAR_RIGHT_DIST < 4.9:
                         strafe_cmd = (LIDAR_RIGHT_DIST - LIDAR_LEFT_DIST) * 0.05
                     
+                    # Barometer / INS Altitude Hold
+                    z_err = -1.5 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    
                     if timeout_counter % 10 == 0:
-                        print(f"[AUTOPILOT] [TRIPLE GATE 1] Blind Punch INS! Jarak: {dist_flown:.2f}/2.5m, Lidar Strafe: {strafe_cmd:.2f}")
+                        print(f"[AUTOPILOT] [TRIPLE GATE 1] Blind Punch INS! Jarak: {dist_flown:.2f}/2.5m, Lidar Strafe: {strafe_cmd:.2f}, Z: {up_cmd:.2f}")
                         
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
                     print("[AUTOPILOT] Keluar dari Triple Gate 1! Nyari Red Box buat Drop...")
                     state_phase = "FIND_DROPBOX"
@@ -563,10 +570,14 @@ async def run_mission():
                     if LIDAR_LEFT_DIST < 4.9 or LIDAR_RIGHT_DIST < 4.9:
                         strafe_cmd = (LIDAR_RIGHT_DIST - LIDAR_LEFT_DIST) * 0.05
                     
+                    # Barometer / INS Altitude Hold
+                    z_err = -1.5 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    
                     if timeout_counter % 10 == 0:
-                        print(f"[AUTOPILOT] [TRIPLE GATE 2] Blind Punch INS! Jarak: {dist_flown:.2f}/2.5m, Lidar Strafe: {strafe_cmd:.2f}")
+                        print(f"[AUTOPILOT] [TRIPLE GATE 2] Blind Punch INS! Jarak: {dist_flown:.2f}/2.5m, Lidar Strafe: {strafe_cmd:.2f}, Z: {up_cmd:.2f}")
                         
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
                     print("[AUTOPILOT] Lolos Triple Gate 2! Mencari Aruco 3...")
                     state_phase = "FIND_ARUCO_3"
@@ -677,7 +688,9 @@ async def run_mission():
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
                 elif dist_flown < 2.5: # PUNCH THROUGH INS
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    z_err = -1.5 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
                     print(f"[AUTOPILOT] Lolos Final Gate 1! Mencari Final Gate 2...")
                     state_phase = "FIND_FINAL_GATE_2"
@@ -754,9 +767,13 @@ async def run_mission():
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
                 elif dist_flown < 2.5: 
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    z_err = -1.5 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
                 elif dist_flown < 4.2: 
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=-0.8, yaw_deg_s=0.0)
+                    z_err = -1.5 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd - 0.8, yaw_deg_s=0.0)
                 else:
                     print(f"[AUTOPILOT] Lolos Final Gate 2! Mencari Landing Pad...")
                     state_phase = "FIND_LANDING_PAD"
