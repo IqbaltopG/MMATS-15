@@ -191,7 +191,7 @@ async def run_mission():
                 elif has_seen_target:
                     # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah
                     timeout_counter += 1
-                    if timeout_counter > 80:
+                    if timeout_counter > 120:
                         print("[AUTOPILOT] Kebablasan ArUco 1 di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
@@ -220,7 +220,7 @@ async def run_mission():
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
                     timeout_counter += 1
-                    if timeout_counter > 50: # Stabil di tengah selama 5 detik
+                    if timeout_counter > 100: # Stabil di tengah selama 10 detik nyata (RTF 30%)
                         print("[AUTOPILOT] Presisi WP1 Tercapai! Mengikuti Straight Line menuju WP2...")
                         state_phase = "FOLLOW_LINE_TO_WP2"
                         timeout_counter = 0
@@ -261,7 +261,7 @@ async def run_mission():
                 if has_seen_target: # Cuma ngitung timeout hilang JIKA sebelumnya udah dapet garis
                     timeout_counter += 1
                 
-            if timeout_counter > 100: # Garis hilang selama ~10 detik nyata (RTF 40% = ~4 detik sim)
+            if timeout_counter > 150: # Garis hilang (RTF 30% scale)
                 print("[AUTOPILOT] Ujung Garis WP2 tercapai! Beralih mencari Aruco 2...")
                 state_phase = "FIND_ARUCO_2"
                 timeout_counter = 0
@@ -288,7 +288,7 @@ async def run_mission():
                 elif has_seen_target:
                     # FALLBACK MEMORY: Blind spot creep
                     timeout_counter += 1
-                    if timeout_counter > 80:
+                    if timeout_counter > 120:
                         print("[AUTOPILOT] Kebablasan ArUco 2 di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                     else:
@@ -316,7 +316,7 @@ async def run_mission():
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
                     timeout_counter += 1
-                    if timeout_counter > 50: # Stabil 5 detik
+                    if timeout_counter > 100: # Stabil 10 detik nyata (RTF 30%)
                         print("[AUTOPILOT] Presisi WP2 Tercapai! Mutar kiri nyari Triple Gate 1...")
                         state_phase = "YAW_LEFT_TRIPLE_1"
                         timeout_counter = 0
@@ -348,7 +348,7 @@ async def run_mission():
                 print(f"[AUTOPILOT] Triple Gate terlihat (Area: {front_area})! Memulai approach...")
                 state_phase = "FIND_TRIPLE_GATE_1"
                 timeout_counter = 0
-            elif timeout_counter > 100: # RTF 40% x 10s = 4s sim. 4s x 15 deg/s = 60 DERAJAT!
+            elif timeout_counter > 150: # RTF 30% scale. 4s x 15 deg/s = 60 DERAJAT!
                 print("[AUTOPILOT] Mentok 60 derajat! Berhenti muter buat jaga-jaga.")
                 state_phase = "FIND_TRIPLE_GATE_1"
                 timeout_counter = 0
@@ -447,7 +447,7 @@ async def run_mission():
                 elif has_seen_target:
                     # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah. Creep pelan pakai memori yaw.
                     timeout_counter += 1
-                    if timeout_counter > 80:
+                    if timeout_counter > 120:
                         print("[AUTOPILOT] Kebablasan Drop Box di blind spot! Terbang mundur...")
                         await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                     else:
@@ -483,7 +483,7 @@ async def run_mission():
                 
                 if abs(down_err_x) < 20 and abs(down_err_y) < 20:
                     timeout_counter += 1
-                    if timeout_counter > 50: # Stabil 5 detik
+                    if timeout_counter > 100: # Stabil 10 detik nyata (RTF 30%)
                         print("[AUTOPILOT] Medkit Dropped. Yaw Kanan nyari Triple Gate 2...")
                         state_phase = "YAW_RIGHT_TRIPLE_2"
                         timeout_counter = 0
@@ -518,7 +518,7 @@ async def run_mission():
                 print(f"[AUTOPILOT] Triple Gate 2 terlihat (Area: {front_area}, Conf: {front_confident:.2f})! Memulai approach...")
                 state_phase = "TRIPLE_GATE_2"
                 timeout_counter = 0
-            elif timeout_counter > 100: # 60 derajat maximum
+            elif timeout_counter > 150: # 60 derajat maximum
                 print("[AUTOPILOT] Mentok 60 derajat! Berhenti muter buat jaga-jaga.")
                 state_phase = "TRIPLE_GATE_2"
                 timeout_counter = 0
@@ -621,7 +621,7 @@ async def run_mission():
                 state_phase = "FIND_FINAL_GATE_1"
                 timeout_counter = 0
             
-            if timeout_counter > 80: # ~5 detik (Maksimum turning limit)
+            if timeout_counter > 120: # ~5 detik (Maksimum turning limit)
                 print("[AUTOPILOT] Timeout belok! Mencari gawang final 1 secara manual...")
                 state_phase = "FIND_FINAL_GATE_1"
                 timeout_counter = 0
@@ -849,7 +849,7 @@ async def run_mission():
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
                     timeout_counter += 1
-                    if timeout_counter > 50: # Stabil 5 detik
+                    if timeout_counter > 100: # Stabil 10 detik nyata (RTF 30%)
                         print("[AUTOPILOT] Mendarat sempurna di titik tengah!")
                         await drone.action.land()
                         print("[AUTOPILOT] Menunggu 8 detik buat pendaratan fisik sebelum Auto-Reset...")
@@ -861,7 +861,7 @@ async def run_mission():
                     timeout_counter = 0
             else:
                 timeout_counter += 1
-                if timeout_counter > 50:
+                if timeout_counter > 100:
                     print("[AUTOPILOT] Landing Pad Hilang! Kembali ke FIND_LANDING_PAD")
                     state_phase = "FIND_LANDING_PAD"
                     timeout_counter = 0
