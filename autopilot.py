@@ -426,7 +426,7 @@ async def run_mission():
         # PHASE 6: FIND_DROPBOX (Mencari Red Drop Box)
         # ---------------------------------------------------------
         elif state_phase == "FIND_DROPBOX":
-            if down_status == "LOCKED" and down_class == "Red Drop Box":
+            if down_status == "LOCKED" and down_class in ["Red Drop Box", "RedDrop Box"]:
                 print("[AUTOPILOT] Red Drop Box Terlihat di Kamera Bawah! AUTO-STOP & Memulai Centering...")
                 state_phase = "CENTER_DROPBOX"
                 timeout_counter = 0
@@ -438,7 +438,7 @@ async def run_mission():
 
                 # Rule 4: Flat Object Camera Handoff
                 # Kalo drop box kelihatan di kamera depan, steer ke sana
-                if front_status == "LOCKED" and front_class == "Red Drop Box":
+                if front_status == "LOCKED" and front_class in ["Red Drop Box", "RedDrop Box"]:
                     has_seen_target = True
                     timeout_counter = 0
                     last_front_err_x = front_err_x
@@ -461,7 +461,7 @@ async def run_mission():
         # PHASE 6.5: CENTER_DROPBOX (Mensejajarkan Drone dengan Drop Box)
         # ---------------------------------------------------------
         elif state_phase == "CENTER_DROPBOX":
-            if down_status == "LOCKED" and down_class == "Red Drop Box":
+            if down_status == "LOCKED" and down_class in ["Red Drop Box", "RedDrop Box"]:
                 has_seen_target = True
                 last_down_err_x = down_err_x
                 last_down_err_y = down_err_y
