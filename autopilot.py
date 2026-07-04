@@ -174,14 +174,21 @@ async def run_mission():
                 print("[AUTOPILOT] Aruco 1 (Marker/Area) Terlihat di Kamera Bawah! Memulai Precision Centering...")
                 state_phase = "CENTER_ARUCO_1"
                 timeout_counter = 0
+                has_seen_target = False
             else:
                 # Kembali ke ketinggian 1.5m (DRONE_Z = -1.5)
                 z_err = -1.5 - DRONE_Z
                 climb_cmd = max(-0.5, min(0.5, z_err * 0.5))
                 
                 if front_status == "LOCKED" and front_class == "Aruco Area":
+                    has_seen_target = True
+                    last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                elif has_seen_target:
+                    # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah
+                    mem_yaw = last_front_err_x * kp_yaw
+                    await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
 
@@ -190,6 +197,11 @@ async def run_mission():
         # ---------------------------------------------------------
         elif state_phase == "CENTER_ARUCO_1":
             if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
+                timeout_counter = 0
+                has_seen_target = True
+                last_down_err_x = down_err_x
+                last_down_err_y = down_err_y
+                
                 fwd_cmd = -down_err_y * 0.0015
                 strafe_cmd = down_err_x * 0.0015
                 
@@ -206,10 +218,20 @@ async def run_mission():
                         state_phase = "FOLLOW_LINE_TO_WP2"
                         timeout_counter = 0
                         has_seen_target = False
-                else:
-                    timeout_counter = 0
             else:
-                await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                timeout_counter += 1
+                if timeout_counter > 30:
+                    print("[AUTOPILOT] WP1 Hilang! Kembali ke FIND_ARUCO_1")
+                    state_phase = "FIND_ARUCO_1"
+                    timeout_counter = 0
+                    has_seen_target = False
+                elif has_seen_target:
+                    # FALLBACK MEMORY: Rebound brake
+                    fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
+                    strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
+                    await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
+                else:
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
 
         # ---------------------------------------------------------
         # PHASE 4: FOLLOW_LINE_TO_WP2 (Murni Ngikutin Garis)
@@ -246,17 +268,30 @@ async def run_mission():
                 print("[AUTOPILOT] WP2 (Aruco 2) Terlihat! Memulai Centering...")
                 state_phase = "CENTER_ARUCO_2"
                 timeout_counter = 0
-            elif front_status == "LOCKED" and front_class == "Aruco Area":
-                yaw_cmd = front_err_x * kp_yaw
-                await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=yaw_cmd)
+                has_seen_target = False
             else:
-                await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                if front_status == "LOCKED" and front_class == "Aruco Area":
+                    has_seen_target = True
+                    last_front_err_x = front_err_x
+                    yaw_cmd = front_err_x * kp_yaw
+                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=yaw_cmd)
+                elif has_seen_target:
+                    # FALLBACK MEMORY: Blind spot creep
+                    mem_yaw = last_front_err_x * kp_yaw
+                    await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
+                else:
+                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
 
         # ---------------------------------------------------------
         # PHASE 4B: CENTER_ARUCO_2 (Precision Hover)
         # ---------------------------------------------------------
         elif state_phase == "CENTER_ARUCO_2":
             if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
+                timeout_counter = 0
+                has_seen_target = True
+                last_down_err_x = down_err_x
+                last_down_err_y = down_err_y
+                
                 fwd_cmd = -down_err_y * 0.0015
                 strafe_cmd = down_err_x * 0.0015
                 
@@ -272,11 +307,20 @@ async def run_mission():
                         state_phase = "YAW_LEFT_TRIPLE_1"
                         timeout_counter = 0
                         has_seen_target = False
-
-                else:
-                    timeout_counter = 0
             else:
-                await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                timeout_counter += 1
+                if timeout_counter > 30:
+                    print("[AUTOPILOT] WP2 Hilang! Kembali ke FIND_ARUCO_2")
+                    state_phase = "FIND_ARUCO_2"
+                    timeout_counter = 0
+                    has_seen_target = False
+                elif has_seen_target:
+                    # FALLBACK MEMORY: Rebound brake
+                    fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
+                    strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
+                    await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
+                else:
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
 
         # ---------------------------------------------------------
         # PHASE 4C: YAW_LEFT_TRIPLE_1 (Belok Kiri Nyari Triple Gate)
