@@ -25,7 +25,7 @@ To ensure Gazebo pulls resources directly from the **Dedicated GPU (Nvidia)** an
 **To initiate the PX4 SITL simulation with Nvidia Offloading, execute the following command:**
 
 ```bash
-__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia make px4_sitl gz_x500
+__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia make px4_sitl gz_x500_depth
 ```
 
 ---
