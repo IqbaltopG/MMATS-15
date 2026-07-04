@@ -368,10 +368,6 @@ async def run_mission():
                 print(f"[AUTOPILOT] Triple Gate terlihat (Area: {front_area})! Memulai approach...")
                 state_phase = "FIND_TRIPLE_GATE_1"
                 timeout_counter = 0
-            elif timeout_counter > 150: # RTF 30% scale. 4s x 15 deg/s = 60 DERAJAT!
-                print("[AUTOPILOT] Mentok 60 derajat! Berhenti muter buat jaga-jaga.")
-                state_phase = "FIND_TRIPLE_GATE_1"
-                timeout_counter = 0
 
         # ---------------------------------------------------------
         # PHASE 5: FIND_TRIPLE_GATE_1 (Habis WP2, masuk lorong 2 meter)
@@ -416,11 +412,10 @@ async def run_mission():
                 dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2) if timeout_counter > 0 else 0
                 
                 if timeout_counter == 0:
-                    # FALLBACK MEMORY: Jangan hover diam! Kalau drift malah hilang.
-                    # Creep maju pelan (0.5m/s) dan arahkan yaw ke posisi X terakhir yang diingat.
+                    # FALLBACK MEMORY: Hover in place while rotating to find the gate!
                     mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw)) # Batasi yaw biar ga terlalu agresif
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
                 elif dist_flown < 3.8: # PUNCH THROUGH TUNNEL (INS Jarak 3.8m)
                     # Repulsion Force Field (LiDAR)
                     strafe_cmd = 0.0
@@ -538,10 +533,6 @@ async def run_mission():
                 print(f"[AUTOPILOT] Triple Gate 2 terlihat (Area: {front_area}, Conf: {front_confident:.2f})! Memulai approach...")
                 state_phase = "TRIPLE_GATE_2"
                 timeout_counter = 0
-            elif timeout_counter > 150: # 60 derajat maximum
-                print("[AUTOPILOT] Mentok 60 derajat! Berhenti muter buat jaga-jaga.")
-                state_phase = "TRIPLE_GATE_2"
-                timeout_counter = 0
 
         # ---------------------------------------------------------
         # PHASE 8: TRIPLE_GATE_2 (Lewati lorong ke-2 menuju WP4)
@@ -586,11 +577,10 @@ async def run_mission():
                 dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2) if timeout_counter > 0 else 0
                 
                 if timeout_counter == 0:
-                    # FALLBACK MEMORY: Jangan hover diam! Kalau drift malah hilang.
-                    # Creep maju pelan (0.5m/s) dan arahkan yaw ke posisi X terakhir yang diingat.
+                    # FALLBACK MEMORY: Hover in place while rotating to find the gate!
                     mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
                 elif dist_flown < 3.8: # PUNCH THROUGH TUNNEL (INS Jarak 3.8m)
                     # Repulsion Force Field (LiDAR)
                     strafe_cmd = 0.0
@@ -713,10 +703,10 @@ async def run_mission():
                 dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2) if timeout_counter > 0 else 0
                 
                 if timeout_counter == 0:
-                    # FALLBACK MEMORY
+                    # FALLBACK MEMORY: Hover in place while rotating to find the gate!
                     mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
                 elif dist_flown < 2.5: # PUNCH THROUGH INS
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
@@ -795,10 +785,10 @@ async def run_mission():
                 dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2) if timeout_counter > 0 else 0
                 
                 if timeout_counter == 0:
-                    # FALLBACK MEMORY
+                    # FALLBACK MEMORY: Hover in place while rotating to find the gate!
                     mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
                 elif dist_flown < 2.5: 
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
