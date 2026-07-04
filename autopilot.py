@@ -236,19 +236,23 @@ async def run_mission():
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
-                    timeout_counter += 1
-                    if timeout_counter > 100: # Stabil di tengah selama 10 detik nyata (RTF 30%)
-                        print("[AUTOPILOT] Presisi WP1 Tercapai! Mengikuti Straight Line menuju WP2...")
-                        state_phase = "FOLLOW_LINE_TO_WP2"
+                    if down_class == "Aruco":
+                        timeout_counter += 1
+                        if timeout_counter > 100: # Stabil di tengah selama 10 detik nyata (RTF 30%)
+                            print("[AUTOPILOT] Presisi WP1 Tercapai! Mengikuti Straight Line menuju WP2...")
+                            state_phase = "FOLLOW_LINE_TO_WP2"
+                            timeout_counter = 0
+                            has_seen_target = False
+                    else:
                         timeout_counter = 0
-                        has_seen_target = False
                 else:
                     timeout_counter = 0
             else:
                 timeout_counter += 1
                 if timeout_counter > 50:
-                    print("[AUTOPILOT] WP1 Hilang! Hovering di tempat...")
-                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    print("[AUTOPILOT] WP1 Hilang! Kembali ke FIND_ARUCO_1...")
+                    state_phase = "FIND_ARUCO_1"
+                    timeout_counter = 0
                 elif has_seen_target:
                     # FALLBACK MEMORY: Rebound brake
                     fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
@@ -358,19 +362,23 @@ async def run_mission():
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
-                    timeout_counter += 1
-                    if timeout_counter > 100: # Stabil 10 detik nyata (RTF 30%)
-                        print("[AUTOPILOT] Presisi WP2 Tercapai! Mutar kiri nyari Triple Gate 1...")
-                        state_phase = "YAW_LEFT_TRIPLE_1"
+                    if down_class == "Aruco":
+                        timeout_counter += 1
+                        if timeout_counter > 100: # Stabil 10 detik nyata (RTF 30%)
+                            print("[AUTOPILOT] Presisi WP2 Tercapai! Mutar kiri nyari Triple Gate 1...")
+                            state_phase = "YAW_LEFT_TRIPLE_1"
+                            timeout_counter = 0
+                            has_seen_target = False
+                    else:
                         timeout_counter = 0
-                        has_seen_target = False
                 else:
                     timeout_counter = 0
             else:
                 timeout_counter += 1
                 if timeout_counter > 50:
-                    print("[AUTOPILOT] WP2 Hilang! Hovering di tempat...")
-                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
+                    print("[AUTOPILOT] WP2 Hilang! Kembali ke FIND_ARUCO_2...")
+                    state_phase = "FIND_ARUCO_2"
+                    timeout_counter = 0
                 elif has_seen_target:
                     # FALLBACK MEMORY: Rebound brake
                     fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
