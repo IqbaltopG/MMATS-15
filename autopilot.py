@@ -254,6 +254,8 @@ async def run_mission():
                     print("[AUTOPILOT] WP1 Hilang! Kembali ke FIND_ARUCO_1...")
                     state_phase = "FIND_ARUCO_1"
                     timeout_counter = 0
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
                 elif has_seen_target:
                     # FALLBACK MEMORY: Rebound brake
                     fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
@@ -381,6 +383,8 @@ async def run_mission():
                     print("[AUTOPILOT] WP2 Hilang! Kembali ke FIND_ARUCO_2...")
                     state_phase = "FIND_ARUCO_2"
                     timeout_counter = 0
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
                 elif has_seen_target:
                     # FALLBACK MEMORY: Rebound brake
                     fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
@@ -557,6 +561,8 @@ async def run_mission():
                     print("[AUTOPILOT] Drop Box Hilang dari kamera bawah! Kembali ke FIND_DROPBOX...")
                     state_phase = "FIND_DROPBOX"
                     timeout_counter = 0
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
                 elif has_seen_target:
                     # FALLBACK MEMORY DOWN CAMERA: Terbang balik ke kordinat terakhir kali keliatan!
                     fwd_cmd = max(-0.2, min(0.2, last_down_err_y * 0.0015))
