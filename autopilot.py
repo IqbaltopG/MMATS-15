@@ -182,13 +182,19 @@ async def run_mission():
                 
                 if front_status == "LOCKED" and front_class == "Aruco Area":
                     has_seen_target = True
+                    timeout_counter = 0
                     last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah
-                    mem_yaw = last_front_err_x * kp_yaw
-                    await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
+                    timeout_counter += 1
+                    if timeout_counter > 50:
+                        print("[AUTOPILOT] Kebablasan ArUco 1 di blind spot! Terbang mundur...")
+                        await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    else:
+                        mem_yaw = last_front_err_x * kp_yaw
+                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
 
@@ -272,13 +278,19 @@ async def run_mission():
             else:
                 if front_status == "LOCKED" and front_class == "Aruco Area":
                     has_seen_target = True
+                    timeout_counter = 0
                     last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=yaw_cmd)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Blind spot creep
-                    mem_yaw = last_front_err_x * kp_yaw
-                    await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
+                    timeout_counter += 1
+                    if timeout_counter > 50:
+                        print("[AUTOPILOT] Kebablasan ArUco 2 di blind spot! Terbang mundur...")
+                        await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    else:
+                        mem_yaw = last_front_err_x * kp_yaw
+                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
 
@@ -418,13 +430,19 @@ async def run_mission():
                 # Kalo drop box kelihatan di kamera depan, steer ke sana
                 if front_status == "LOCKED" and front_class == "Red Drop Box":
                     has_seen_target = True
+                    timeout_counter = 0
                     last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah. Creep pelan pakai memori yaw.
-                    mem_yaw = last_front_err_x * kp_yaw
-                    await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
+                    timeout_counter += 1
+                    if timeout_counter > 50:
+                        print("[AUTOPILOT] Kebablasan Drop Box di blind spot! Terbang mundur...")
+                        await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    else:
+                        mem_yaw = last_front_err_x * kp_yaw
+                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
                 else:
                     # Belum keliatan, jalan lurus pelan sambil nanjak ke ketinggian operasi
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
@@ -769,13 +787,19 @@ async def run_mission():
                 # Rule 4: Handoff Kamera
                 if front_status == "LOCKED" and front_class in ["Landing path", "Aruco"]:
                     has_seen_target = True
+                    timeout_counter = 0
                     last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Blind spot creep
-                    mem_yaw = last_front_err_x * kp_yaw
-                    await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
+                    timeout_counter += 1
+                    if timeout_counter > 50:
+                        print("[AUTOPILOT] Kebablasan Landing Pad di blind spot! Terbang mundur...")
+                        await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    else:
+                        mem_yaw = last_front_err_x * kp_yaw
+                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
 
