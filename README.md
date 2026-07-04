@@ -40,6 +40,7 @@ Eksekusi *script* instalasi resmi dari PX4 untuk menarik Gazebo dan seluruh *dep
 sudo apt update && sudo apt upgrade -y
 wget [https://raw.githubusercontent.com/PX4/PX4-Autopilot/main/Tools/setup/ubuntu.sh](https://raw.githubusercontent.com/PX4/PX4-Autopilot/main/Tools/setup/ubuntu.sh)
 bash ubuntu.sh
+pip install -r requirements.txt
 ```
 ⚠️ **System Halt:** Setelah *script* selesai, **WAJIB REBOOT PC KALIAN**.
 
