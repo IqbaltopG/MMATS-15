@@ -85,35 +85,49 @@ async def run_mission():
                 last_front_area = front_area
                 last_front_err_y = front_err_y
                 yaw_cmd = front_err_x * kp_yaw
-                # ALGORITMA NENGAHIN DULU: Cuma cek Kiri/Kanan, abaikan Naik/Turun karena Pitch bikin gambar goyang!
-                if abs(front_err_x) > 40:
+                
+                # AMRAAM Pitbull Mode: Kunci X dan Y dulu sebelum terbang maju!
+                if not altitude_locked:
                     fwd_cmd = 0.0
                     up_cmd = (front_err_y + 150) * kp_up
+                    up_cmd = max(-0.6, min(0.6, up_cmd))
+                    if abs(front_err_x) < 20 and abs(front_err_y + 150) < 20:
+                        altitude_locked = True
+                        print("[AUTOPILOT] Altitude Locked! Punching forward...")
                 else:
-                    fwd_cmd = 0.8
+                    if abs(front_err_x) > 20:
+                        fwd_cmd = 0.0
+                    else:
+                        fwd_cmd = 0.8
                     up_cmd = 0.0
                 
-                print(f"[AUTOPILOT] [GATE 1] Fwd: {fwd_cmd}, Strafe X: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
+                print(f"[AUTOPILOT] [GATE 1] Fwd: {fwd_cmd}, Strafe X: {yaw_cmd:.2f}, Z: {up_cmd:.2f}, Lock: {altitude_locked}")
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=yaw_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
             else:
                 if has_seen_target:
-                    if last_front_err_y < 20 and last_front_area > 8000:
+                    if (last_front_err_y < 20 and abs(last_front_err_x) < 30 and last_front_area > 5000) or last_front_area > 200000 or timeout_counter > 0:
+                        if timeout_counter == 0:
+                            blind_start_x = DRONE_X
+                            blind_start_y = DRONE_Y
                         timeout_counter += 1
                     else:
                         print(f"[AUTOPILOT] Gawang 1 hilang/flicker (Area: {last_front_area}). Hovering...")
                         timeout_counter = 0
                 
+                dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2) if timeout_counter > 0 else 0
+                
                 if timeout_counter == 0:
                     await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
-                elif timeout_counter < 150:
+                elif timeout_counter < 30: # DROP INTO THE OPENING
+                    if timeout_counter % 10 == 0:
+                        print(f"[AUTOPILOT] [GATE 1] Strafe Down untuk hindari top bar! (Tick: {timeout_counter}/30)")
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.5, yaw_deg_s=0.0)
+                elif dist_flown < 3.2: # PUNCH THROUGH
+                    if timeout_counter % 10 == 0:
+                        print(f"[AUTOPILOT] [GATE 1] Punching blind! INS Jarak: {dist_flown:.2f}/3.2m")
                     await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
-                elif timeout_counter < 180:
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=-0.6, yaw_deg_s=0.0)
                 else:
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
-                
-                if timeout_counter > 200: # 3 detik blind forward untuk nembus
-                    print("[AUTOPILOT] Gate 1 terlewati! Beralih nyari Aruco 1...")
+                    print(f"[AUTOPILOT] Lolos Gate 1 (Jarak INS: {dist_flown:.2f}m)! Mencari Aruco 1...")
                     state_phase = "FIND_ARUCO_1"
                     timeout_counter = 0
                     has_seen_target = False
@@ -127,11 +141,16 @@ async def run_mission():
                 print("[AUTOPILOT] Aruco 1 (Marker/Area) Terlihat di Kamera Bawah! Memulai Precision Centering...")
                 state_phase = "CENTER_ARUCO_1"
                 timeout_counter = 0
-            elif front_status == "LOCKED" and front_class == "Aruco Area":
-                yaw_cmd = front_err_x * kp_yaw
-                await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=yaw_cmd)
             else:
-                await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                # Kembali ke ketinggian 1.5m (DRONE_Z = -1.5)
+                z_err = -1.5 - DRONE_Z
+                climb_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                
+                if front_status == "LOCKED" and front_class == "Aruco Area":
+                    yaw_cmd = front_err_x * kp_yaw
+                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                else:
+                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
 
         # ---------------------------------------------------------
         # PHASE 3B: CENTER_ARUCO_1 (Precision Hover)
