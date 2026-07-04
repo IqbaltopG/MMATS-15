@@ -203,7 +203,6 @@ async def run_mission():
         # ---------------------------------------------------------
         elif state_phase == "CENTER_ARUCO_1":
             if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
-                timeout_counter = 0
                 has_seen_target = True
                 last_down_err_x = down_err_x
                 last_down_err_y = down_err_y
@@ -219,11 +218,13 @@ async def run_mission():
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
                     timeout_counter += 1
-                    if timeout_counter > 5: # Stabil di tengah selama 0.5 detik
+                    if timeout_counter > 50: # Stabil di tengah selama 5 detik
                         print("[AUTOPILOT] Presisi WP1 Tercapai! Mengikuti Straight Line menuju WP2...")
                         state_phase = "FOLLOW_LINE_TO_WP2"
                         timeout_counter = 0
                         has_seen_target = False
+                else:
+                    timeout_counter = 0
             else:
                 timeout_counter += 1
                 if timeout_counter > 30:
@@ -299,7 +300,6 @@ async def run_mission():
         # ---------------------------------------------------------
         elif state_phase == "CENTER_ARUCO_2":
             if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
-                timeout_counter = 0
                 has_seen_target = True
                 last_down_err_x = down_err_x
                 last_down_err_y = down_err_y
@@ -314,11 +314,13 @@ async def run_mission():
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
                     timeout_counter += 1
-                    if timeout_counter > 5:
+                    if timeout_counter > 50: # Stabil 5 detik
                         print("[AUTOPILOT] Presisi WP2 Tercapai! Mutar kiri nyari Triple Gate 1...")
                         state_phase = "YAW_LEFT_TRIPLE_1"
                         timeout_counter = 0
                         has_seen_target = False
+                else:
+                    timeout_counter = 0
             else:
                 timeout_counter += 1
                 if timeout_counter > 30:
@@ -452,7 +454,6 @@ async def run_mission():
         # ---------------------------------------------------------
         elif state_phase == "CENTER_DROPBOX":
             if down_status == "LOCKED" and down_class == "Red Drop Box":
-                timeout_counter = 0
                 has_seen_target = True
                 last_down_err_x = down_err_x
                 last_down_err_y = down_err_y
@@ -474,13 +475,13 @@ async def run_mission():
                 
                 if abs(down_err_x) < 20 and abs(down_err_y) < 20:
                     timeout_counter += 1
-                    if timeout_counter > 15:
-                        print("[AUTOPILOT] BERADA PRESISI DI ATAS RED BOX! DROPPING MEDKIT!!!")
-                        await asyncio.sleep(2)
+                    if timeout_counter > 50: # Stabil 5 detik
                         print("[AUTOPILOT] Medkit Dropped. Yaw Kanan nyari Triple Gate 2...")
                         state_phase = "YAW_RIGHT_TRIPLE_2"
                         timeout_counter = 0
                         has_seen_target = False
+                else:
+                    timeout_counter = 0
             else:
                 timeout_counter += 1
                 if timeout_counter > 30:
@@ -808,7 +809,6 @@ async def run_mission():
         # ---------------------------------------------------------
         elif state_phase == "PRECISION_LANDING":
             if down_status == "LOCKED" and (down_class == "Landing path" or down_class == "Aruco"):
-                timeout_counter = 0
                 has_seen_target = True
                 last_down_err_x = down_err_x
                 last_down_err_y = down_err_y
@@ -821,13 +821,13 @@ async def run_mission():
                 fwd_cmd = max(-0.2, min(0.2, fwd_cmd))
                 strafe_cmd = max(-0.2, min(0.2, strafe_cmd))
                 
-                print(f"[AUTOPILOT] [LANDING] Fwd: {fwd_cmd:.2f}, Strafe: {strafe_cmd:.2f}, Tick: {timeout_counter}/5")
+                print(f"[AUTOPILOT] [LANDING] Fwd: {fwd_cmd:.2f}, Strafe: {strafe_cmd:.2f}, Tick: {timeout_counter}/50")
                 # Turun pelan-pelan (0.3 m/s) sambil centering
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.3, yaw_deg_s=0.0)
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
                     timeout_counter += 1
-                    if timeout_counter > 5:
+                    if timeout_counter > 50: # Stabil 5 detik
                         print("[AUTOPILOT] Mendarat sempurna di titik tengah!")
                         await drone.action.land()
                         print("[AUTOPILOT] Menunggu 8 detik buat pendaratan fisik sebelum Auto-Reset...")
@@ -835,6 +835,8 @@ async def run_mission():
                         import os
                         os.system("./respawn.sh")
                         break
+                else:
+                    timeout_counter = 0
             else:
                 timeout_counter += 1
                 if timeout_counter > 50:
