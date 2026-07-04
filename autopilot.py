@@ -250,6 +250,21 @@ async def run_mission():
             yaw_cmd = 0.0
             strafe_cmd = 0.0
             
+            # EARLY EXIT: Jika sudah melihat Aruco 2, langsung stop ikuti garis
+            if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
+                print("[AUTOPILOT] WP2 (Aruco 2) Terlihat di Bawah! Langsung Centering...")
+                state_phase = "CENTER_ARUCO_2"
+                timeout_counter = 0
+                has_seen_target = False
+                continue # Skip the rest of the loop to enter new phase immediately
+                
+            elif front_status == "LOCKED" and front_class == "Aruco Area":
+                print("[AUTOPILOT] Aruco 2 Terlihat di Depan! Beralih mencari Aruco 2...")
+                state_phase = "FIND_ARUCO_2"
+                timeout_counter = 0
+                has_seen_target = False
+                continue
+            
             if front_status == "LOCKED" and front_class == "Straight Line":
                 yaw_cmd = front_err_x * kp_yaw
                 
