@@ -251,14 +251,15 @@ async def run_mission():
             strafe_cmd = 0.0
             
             # EARLY EXIT: Jika sudah melihat Aruco 2, langsung stop ikuti garis
-            if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
+            # ONLY early exit if we have seen the straight line first (meaning we left Aruco 1)
+            if has_seen_target and down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
                 print("[AUTOPILOT] WP2 (Aruco 2) Terlihat di Bawah! Langsung Centering...")
                 state_phase = "CENTER_ARUCO_2"
                 timeout_counter = 0
                 has_seen_target = False
                 continue # Skip the rest of the loop to enter new phase immediately
                 
-            elif front_status == "LOCKED" and front_class == "Aruco Area":
+            elif has_seen_target and front_status == "LOCKED" and front_class == "Aruco Area":
                 print("[AUTOPILOT] Aruco 2 Terlihat di Depan! Beralih mencari Aruco 2...")
                 state_phase = "FIND_ARUCO_2"
                 timeout_counter = 0
@@ -413,7 +414,7 @@ async def run_mission():
                 if timeout_counter == 0:
                     # FALLBACK MEMORY: Jangan hover diam! Kalau drift malah hilang.
                     # Creep maju pelan (0.5m/s) dan arahkan yaw ke posisi X terakhir yang diingat.
-                    # mem_yaw disabled during blind spot to prevent spiraling
+                    mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw)) # Batasi yaw biar ga terlalu agresif
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 3.8: # PUNCH THROUGH TUNNEL (INS Jarak 3.8m)
@@ -583,7 +584,7 @@ async def run_mission():
                 if timeout_counter == 0:
                     # FALLBACK MEMORY: Jangan hover diam! Kalau drift malah hilang.
                     # Creep maju pelan (0.5m/s) dan arahkan yaw ke posisi X terakhir yang diingat.
-                    # mem_yaw disabled during blind spot to prevent spiraling
+                    mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 3.8: # PUNCH THROUGH TUNNEL (INS Jarak 3.8m)
@@ -709,7 +710,7 @@ async def run_mission():
                 
                 if timeout_counter == 0:
                     # FALLBACK MEMORY
-                    # mem_yaw disabled during blind spot to prevent spiraling
+                    mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 2.5: # PUNCH THROUGH INS
@@ -791,7 +792,7 @@ async def run_mission():
                 
                 if timeout_counter == 0:
                     # FALLBACK MEMORY
-                    # mem_yaw disabled during blind spot to prevent spiraling
+                    mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 2.5: 
