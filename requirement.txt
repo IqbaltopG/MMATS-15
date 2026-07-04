@@ -1,0 +1,9 @@
+# Core Flight Stack
+mavsdk>=2.9.0
+
+# Math & Data Processing (For dynamic yaw and pathfinding)
+numpy>=1.24.0
+
+# Asynchronous operations & hardware comms fallback
+asyncio
+pyserial>=3.5
