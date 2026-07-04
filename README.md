@@ -1,4 +1,4 @@
-# 🚁 Autonomous Quadcopter System - Precision Payload Delivery
+# 🚁 MMATS-15: Microservice Multisensor Autonomous Targetting System
 
 ![Python](https://img.shields.io/badge/Python-3.10-blue?style=for-the-badge&logo=python)
 ![PX4](https://img.shields.io/badge/PX4_Autopilot-SITL-blueviolet?style=for-the-badge)
@@ -6,7 +6,7 @@
 ![License](https://img.shields.io/badge/License-Unlicense-black?style=for-the-badge)
 
 ## 📌 Executive Summary
-This repository contains the foundational architecture for an autonomous quadcopter system (X500 frame) designed for precision pathfinding and automated payload delivery. Built utilizing **MAVSDK-Python** and tested within the **PX4 SITL (Software In The Loop)** and **Gazebo** environments, the system emphasizes high availability, dynamic yaw (bearing) calculations, and macro-level mission execution.
+This repository contains **MMATS-15**, a missile-inspired, hyper-optimized autonomous targeting architecture for precision payload delivery (X500 frame). Built heavily on the **KISS (Keep It Simple, Stupid)** principle, it strips away bloated frameworks in favor of raw UDP microservices. Tested within the **PX4 SITL** and **Gazebo** environments, the system features time-dilation physics compensation, "Tunnel Blind Charge" memory buffers, and zero-cost sensor fusion designed specifically to run flawlessly on resource-constrained edge hardware (like the Raspberry Pi 5).
 
 ## 🛠️ Arsenal & Tech Stack
 * **Core Logic:** Python 3.10, MAVSDK
