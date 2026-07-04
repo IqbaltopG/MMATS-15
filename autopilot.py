@@ -95,6 +95,10 @@ async def run_mission():
         down_err_x = TARGET_STATE_DOWN.get("error_x", 0)
         down_err_y = TARGET_STATE_DOWN.get("error_y", 0)
 
+        # Active Altitude Hold for 1.5m Operating Height
+        z_err_15 = -1.5 - DRONE_Z
+        global_climb_cmd = max(-0.5, min(0.5, z_err_15 * 0.5))
+
         # ---------------------------------------------------------
         # PHASE 2: CENTERING_GATE_1 (Maju nembus gawang pertama)
         # ---------------------------------------------------------
@@ -238,9 +242,9 @@ async def run_mission():
                     # FALLBACK MEMORY: Rebound brake
                     fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
                     strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
-                    await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 else:
-                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
 
         # ---------------------------------------------------------
         # PHASE 4: FOLLOW_LINE_TO_WP2 (Murni Ngikutin Garis)
@@ -283,7 +287,7 @@ async def run_mission():
                 timeout_counter = 0
                 has_seen_target = False
             
-            await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=yaw_cmd)
+            await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=global_climb_cmd, yaw_deg_s=yaw_cmd)
 
         # ---------------------------------------------------------
         # PHASE 4A: FIND_ARUCO_2 (Mencari Aruco setelah garis habis)
@@ -300,18 +304,18 @@ async def run_mission():
                     timeout_counter = 0
                     last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=yaw_cmd)
+                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=yaw_cmd)
                 elif has_seen_target:
                     # FALLBACK MEMORY: Blind spot creep
                     timeout_counter += 1
                     if timeout_counter > 120:
                         print("[AUTOPILOT] Kebablasan ArUco 2 di blind spot! Terbang mundur...")
-                        await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                        await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                     else:
                         # mem_yaw disabled during blind spot to prevent spiraling
-                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                        await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 else:
-                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=0.5, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
 
         # ---------------------------------------------------------
         # PHASE 4B: CENTER_ARUCO_2 (Precision Hover)
@@ -328,7 +332,7 @@ async def run_mission():
                 fwd_cmd = max(-0.2, min(0.2, fwd_cmd))
                 strafe_cmd = max(-0.2, min(0.2, strafe_cmd))
                 
-                await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
+                await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
                     timeout_counter += 1
@@ -350,9 +354,9 @@ async def run_mission():
                     # FALLBACK MEMORY: Rebound brake
                     fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
                     strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
-                    await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 else:
-                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
 
         # ---------------------------------------------------------
         # PHASE 4C: YAW_LEFT_TRIPLE_1 (Belok Kiri Nyari Triple Gate)
