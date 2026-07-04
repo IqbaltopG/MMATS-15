@@ -88,3 +88,21 @@ During the development of **MMATS-15**, we arrived at two massive architectural 
 
 2. **The Dataset is the Ultimate Bottleneck:**
    While the mathematical workarounds (like the `+150` pixel offset, the `altitude_locked` anti-stutter state machine, and the `front_area > 20000` filter) are incredibly robust, they only exist because the dataset was flawed. The single biggest takeaway for future iterations is that **dataset quality matters more than anything else**. A perfectly annotated YOLO model (where bounding boxes cover the actual empty holes and differentiate between Gate 1 and Gate 2) would eliminate 50% of the complex state-machine logic required to keep the drone alive.
+
+## 5. The "Whack-A-Mole" Regression Loop
+Fixing a bug in one phase (e.g. ArUco 1) often unintentionally broke another phase (e.g. ArUco 2 or Triple Gate) because robotics state machines are physically coupled. Changing the entry speed or pitch in Phase A fundamentally alters the camera's perspective and the drone's momentum in Phase B. 
+* **Lesson Learned:** We must rely on hard physics (INS distance, exact area thresholds, hover-and-align checks) rather than assuming the drone is perfectly aligned based on timing. Time-based logic (`timeout_counter`) is highly susceptible to simulation lag, wind, and battery sag.
+
+## 6. The UDP Payload & False "Confidence" Bug
+A previous attempt to filter out false positives added a `front_confident > 0.5` check. However, the custom `vision_daemon.py` strictly sends only essential data over UDP (`error_x`, `error_y`, `area`, `class`) to avoid bloatware and packet loss. Since `confidence` was never sent, it defaulted to `0.0`, silently breaking the lock-on logic.
+* **Lesson Learned:** Always align the Autopilot's expected data structure with the Vision Daemon's actual UDP payload. Do not add arbitrary checks without confirming the data pipeline supports them. We replaced this with a purely physical `front_area > 10000` filter.
+
+## 7. YOLO Flickering & Strict vs. Dual-Timeout Completion
+When centering over ground targets (ArUco / Drop Box), the YOLO model occasionally lost the small inner marker and instead detected the massive yellow pad (`Aruco Area`) underneath it due to shadows or dataset limitations. When it flickered to `Aruco Area`, the drone panicked.
+* **Lesson Learned:** 
+  1. **For ArUco:** The drone can use `Aruco Area` for general centering, but should only *quickly* complete the phase if it sees the actual `Aruco` marker. If the inner marker is permanently occluded, a "slow fallback" dual-timeout allows the phase to complete safely after 15 seconds.
+  2. **For Drop Box:** Because the Red Box is large and reliable, we enforce a strict drop requirement. Flickering to `Aruco Area` resets the timer but does not cause the drone to panic.
+
+## 8. Phase Reversion & Instant Overshoot Loops
+When the drone lost the target during centering, it reverted its state machine back to the `FIND_` phase. However, it did not reset its `blind_start` tracking coordinates. Because it had already flown several meters, reverting instantly triggered the `dist_flown > 2.5m` overshoot logic, forcing it backwards in an infinite "Maju Mundur Cantik" loop.
+* **Lesson Learned:** State machine reversions MUST be atomic. When reverting a state, all tracking variables associated with that state (like initial coordinates) must be wiped clean to prevent phantom triggers from stale memory.
