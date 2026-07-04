@@ -364,6 +364,7 @@ async def run_mission():
                 print("[AUTOPILOT] Red Drop Box Terlihat di Kamera Bawah! AUTO-STOP & Memulai Centering...")
                 state_phase = "CENTER_DROPBOX"
                 timeout_counter = 0
+                has_seen_target = False
             else:
                 # P-Controller untuk CLIMB ke -1.5 meter secara instan setelah keluar lorong
                 z_err = -1.5 - DRONE_Z
@@ -372,8 +373,14 @@ async def run_mission():
                 # Rule 4: Flat Object Camera Handoff
                 # Kalo drop box kelihatan di kamera depan, steer ke sana
                 if front_status == "LOCKED" and front_class == "Red Drop Box":
+                    has_seen_target = True
+                    last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                elif has_seen_target:
+                    # FALLBACK MEMORY: Masuk blind spot antara kamera depan dan bawah. Creep pelan pakai memori yaw.
+                    mem_yaw = last_front_err_x * kp_yaw
+                    await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
                 else:
                     # Belum keliatan, jalan lurus pelan sambil nanjak ke ketinggian operasi
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
@@ -384,6 +391,9 @@ async def run_mission():
         elif state_phase == "CENTER_DROPBOX":
             if down_status == "LOCKED" and down_class == "Red Drop Box":
                 timeout_counter = 0
+                has_seen_target = True
+                last_down_err_x = down_err_x
+                last_down_err_y = down_err_y
                 
                 # Active Auto-Stop Braking (Gentle for Gimbal-less)
                 fwd_cmd = down_err_y * 0.0015
@@ -408,8 +418,24 @@ async def run_mission():
                         print("[AUTOPILOT] Medkit Dropped. Yaw Kanan nyari Triple Gate 2...")
                         state_phase = "YAW_RIGHT_TRIPLE_2"
                         timeout_counter = 0
+                        has_seen_target = False
             else:
-                await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                timeout_counter += 1
+                if timeout_counter > 30:
+                    print("[AUTOPILOT] Drop Box Hilang dari kamera bawah! Kembali ke FIND_DROPBOX")
+                    state_phase = "FIND_DROPBOX"
+                    timeout_counter = 0
+                    has_seen_target = False
+                elif has_seen_target:
+                    # FALLBACK MEMORY DOWN CAMERA: Terbang balik ke kordinat terakhir kali keliatan!
+                    fwd_cmd = max(-0.2, min(0.2, last_down_err_y * 0.0015))
+                    strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
+                    z_err = -1.5 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    print(f"[AUTOPILOT] Drop Box Flicker! Terbang balik pake memori kamera bawah... Fwd: {fwd_cmd:.2f}")
+                    await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
+                else:
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
 
         # ---------------------------------------------------------
         # PHASE 7: YAW_RIGHT_TRIPLE_2 (Yaw Kanan ke Triple Gate 2)
@@ -690,6 +716,7 @@ async def run_mission():
                 print("[AUTOPILOT] Landing Pad Terlihat di Kamera Bawah! AUTO-STOP & Memulai Centering...")
                 state_phase = "PRECISION_LANDING"
                 timeout_counter = 0
+                has_seen_target = False
             else:
                 # P-Controller CLIMB ke -1.5m setelah punch through Final Gate 2
                 z_err = -1.5 - DRONE_Z
@@ -697,8 +724,14 @@ async def run_mission():
                 
                 # Rule 4: Handoff Kamera
                 if front_status == "LOCKED" and front_class in ["Landing path", "Aruco"]:
+                    has_seen_target = True
+                    last_front_err_x = front_err_x
                     yaw_cmd = front_err_x * kp_yaw
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                elif has_seen_target:
+                    # FALLBACK MEMORY: Blind spot creep
+                    mem_yaw = last_front_err_x * kp_yaw
+                    await flight.send_body_velocity(drone, forward_m_s=0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=mem_yaw)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
 
@@ -707,6 +740,11 @@ async def run_mission():
         # ---------------------------------------------------------
         elif state_phase == "PRECISION_LANDING":
             if down_status == "LOCKED" and (down_class == "Landing path" or down_class == "Aruco"):
+                timeout_counter = 0
+                has_seen_target = True
+                last_down_err_x = down_err_x
+                last_down_err_y = down_err_y
+                
                 # Pake 0.0015 buat Active Braking yang gentle
                 fwd_cmd = down_err_y * 0.0015
                 strafe_cmd = down_err_x * 0.0015
@@ -729,11 +767,21 @@ async def run_mission():
                         import os
                         os.system("./respawn.sh")
                         break
-                else:
-                    timeout_counter = 0
             else:
-                # Kalo target ilang dari kamera bawah pas lagi nunduk, hover sambil turun pelan
-                await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.5, yaw_deg_s=0.0)
+                timeout_counter += 1
+                if timeout_counter > 50:
+                    print("[AUTOPILOT] Landing Pad Hilang! Kembali ke FIND_LANDING_PAD")
+                    state_phase = "FIND_LANDING_PAD"
+                    timeout_counter = 0
+                    has_seen_target = False
+                elif has_seen_target:
+                    # FALLBACK MEMORY DOWN CAMERA
+                    fwd_cmd = max(-0.2, min(0.2, last_down_err_y * 0.0015))
+                    strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
+                    print(f"[AUTOPILOT] Landing Pad Flicker! Terbang balik pake memori... Fwd: {fwd_cmd:.2f}")
+                    await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.3, yaw_deg_s=0.0)
+                else:
+                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.5, yaw_deg_s=0.0)
 
         await asyncio.sleep(0.1) # Loop jalan 10 Hz
 
