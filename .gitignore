@@ -1,0 +1,14 @@
+# ~/DRONE/.gitignore
+
+# Brankas Rahasia
+# Environment Variables
+.env
+
+# Virtual Environment & Cache Python
+.venv/
+# Python cache
+__pycache__/
+*.pyc
+
+# Log OS
+.DS_Store

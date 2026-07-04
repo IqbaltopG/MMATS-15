@@ -1,16 +1,19 @@
+import os
 import asyncio
 from mavsdk import System
 import math
 import time
+from dotenv import load_dotenv
 
-# --- KONFIGURASI TARGET OUTDOOR ---
-# Target DPMO (Drop Muatan Outdoor)
+load_dotenv() # Membaca file .env agar os.getenv tidak bernilai None
+
+# Load konfigurasi dari OS Environment (akan di-inject via bash nanti)
 titik_target = [
-    (-1.259304, 116.862317), # Pojok 1
-    (-1.258282, 116.862576), # Pojok 2
+    (float(os.getenv("TARGET_1_LAT")), float(os.getenv("TARGET_1_LON"))),
+    (float(os.getenv("TARGET_2_LAT")), float(os.getenv("TARGET_2_LON"))),
 ]
-# Koordinat FLP (Tengah Lapangan) [cite: 116, 117, 118]
-koordinat_flp = (-1.258800, 116.862450)
+koordinat_flp = (float(os.getenv("FLP_LAT")), float(os.getenv("FLP_LON")))
+target_alt_agl = 10.0
 
 def get_distance_in_meters(coord1, coord2):
     """
@@ -98,14 +101,12 @@ async def run():
     # ==========================================
     # print("\n--- INITIATING INDOOR MISSION ---")
     
-    # # Nanti di sini kita masukin script OpenCV lu.
-    # # Buat sekarang, kita asumsikan drone udah disuruh maju 5 meter ke atas keranjang merah.
-    # print("[!] Bergerak menuju Keranjang Merah (Simulasi)...")
-    # await asyncio.sleep(3) # Pura-puranya lagi jalan ngelewatin lorong L [cite: 141]
+    # # TODO: Integrasi script OpenCV
+    # print("[!] Bergerak menuju Keranjang Merah...")
+    # await asyncio.sleep(3) 
     
-    # # Jatuhin muatan indoor ke keranjang [cite: 142]
     # print("[!] Target Keranjang Merah Locked!")
-    # await lepaskan_muatan(drone, 0) # Index 0 buat servo payload indoor
+    # await lepaskan_muatan(drone, 0) 
     
     # print("[!] Bergerak keluar melewati lorong IEG (Indoor Exit Gate)...")
     # await asyncio.sleep(3)
@@ -115,7 +116,7 @@ async def run():
     # [PHASE 2] MISI OUTDOOR (KUBUS MERAH)
     # ==========================================
     print("\n--- INITIATING OUTDOOR MISSION ---")
-    target_ketinggian_terbang_agl = 10.0 # 10 meter [cite: 144]
+    target_ketinggian_terbang_agl = 10.0 
     
     async for terrain_info in drone.telemetry.position():
         # Dapatkan AMSL tanah dengan mengurangi ketinggian absolut saat ini dengan ketinggian relatif
@@ -124,26 +125,25 @@ async def run():
 
     target_alt_amsl = ground_amsl + target_ketinggian_terbang_agl
 
-    # Mulai keliling ke pojok lapangan [cite: 144]
-    # Mulai keliling ke pojok lapangan
+    
     for i, (lat, lon) in enumerate(titik_target):
         
-        # 1. Ambil posisi saat ini dulu SEBELUM ngegas ke target
+        # Ambil posisi awal untuk menghitung target yaw
         async for pos_awal in drone.telemetry.position():
             current_pos_awal = (pos_awal.latitude_deg, pos_awal.longitude_deg)
-            break # Cukup ambil satu sampel data
+            break 
             
         target_pos = (lat, lon)
         
-        # 2. Hitung sudut hadap (Yaw) yang bener
+        # Hitung sudut hadap (Yaw)
         target_yaw = get_bearing(current_pos_awal, target_pos)
         
         print(f"OTW Target Outdoor {i+1}: {lat}, {lon} | Ketinggian: {target_alt_amsl} AMSL | Hadap: {target_yaw:.1f} derajat")
         
-        # 3. Eksekusi dengan Yaw dinamis (Bukan 0.0 lagi!)
+        # Eksekusi waypoint dengan Yaw dinamis
         await drone.action.goto_location(lat, lon, target_alt_amsl, target_yaw)
         
-        # [WAJIB ADA] Loop penahan: Tunggu sampe jarak ke target < 2 meter
+        # Tunggu sampai jarak ke target < 2 meter
         last_print = 0
         async for position in drone.telemetry.position():
             current_pos = (position.latitude_deg, position.longitude_deg)
@@ -156,28 +156,27 @@ async def run():
                 
             if distance < 2.0:
                 print(f"[!] Tiba di Target Outdoor {i+1}")
-                break # Keluar dari loop penahan ini kalau udah nyampe
+                break 
         
-        # Baru eksekusi payload setelah loop penahan di-break (sudah sampai)
+        # Eksekusi payload
         await lepaskan_muatan(drone, i + 1) 
         
-    # MISI SELESAI: Landing di FLP
+    # Return to Base
     print("\n--- MISI BERES: RTB (Return to Base) ---")
     print(f"Kembali ke FLP di {koordinat_flp[0]}, {koordinat_flp[1]}")
 
-    # 1. Ambil posisi saat ini (posisi drop terakhir) sebelum pulang
+    # Ambil posisi saat ini sebelum RTB
     async for pos_pulang in drone.telemetry.position():
         current_pos_pulang = (pos_pulang.latitude_deg, pos_pulang.longitude_deg)
         break
         
-    # 2. Hitung sudut hadap (Yaw) buat rute pulang
+    # Hitung sudut hadap (Yaw) rute pulang
     rtb_yaw = get_bearing(current_pos_pulang, koordinat_flp)
 
-    # 3. Eksekusi RTB dengan hidung ngadep target FLP (Bukan 0.0!)
+    # Eksekusi RTB
     await drone.action.goto_location(koordinat_flp[0], koordinat_flp[1], target_alt_amsl, rtb_yaw)
 
     last_print = 0
-    # ... (lanjut ke logic nunggu jarak buat landing kayak biasa)
     async for position in drone.telemetry.position():
         current_pos = (position.latitude_deg, position.longitude_deg)
         distance = get_distance_in_meters(current_pos, koordinat_flp)
