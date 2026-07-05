@@ -925,8 +925,8 @@ async def run_mission():
                         await drone.action.land()
                         print("[AUTOPILOT] Menunggu 8 detik buat pendaratan fisik sebelum Auto-Reset...")
                         await asyncio.sleep(8)
-                        import os
-                        os.system("./respawn.sh")
+                        # import os
+                        # os.system("./respawn.sh")
                         break
                 else:
                     landing_ticks = 0
