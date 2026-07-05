@@ -68,8 +68,6 @@ async def run_mission():
         if state.is_connected:
             print("[AUTOPILOT] Drone Terkoneksi!")
             break
-
-    await start_udp_server()
     
     print("[AUTOPILOT] Starting Telemetry & Lidar Tasks...")
     asyncio.create_task(telemetry_task(drone))
