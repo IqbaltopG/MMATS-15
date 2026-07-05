@@ -440,7 +440,8 @@ async def run_mission():
             else:
                 if has_seen_target:
                     # FALLBACK MEMORY: Cek ukuran area terakhir buat ngebedain "flicker dari jauh" vs "masuk lorong"
-                    if last_front_area > 40000:
+                    # Harus udah deket (Area > 10000) DAN udah di tengah (X error < 30) biar nggak nge-punch pas miring
+                    if last_front_area > 10000 and abs(last_front_err_x) < 30:
                         if timeout_counter == 0:
                             blind_start_x = DRONE_X
                             blind_start_y = DRONE_Y
@@ -621,7 +622,8 @@ async def run_mission():
             else:
                 if has_seen_target:
                     # FALLBACK MEMORY: Cek ukuran area terakhir buat ngebedain "flicker dari jauh" vs "masuk lorong"
-                    if last_front_area > 40000:
+                    # Harus udah deket (Area > 10000) DAN udah di tengah (X error < 30) biar nggak nge-punch pas miring
+                    if last_front_area > 10000 and abs(last_front_err_x) < 30:
                         if timeout_counter == 0:
                             blind_start_x = DRONE_X
                             blind_start_y = DRONE_Y
