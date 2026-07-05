@@ -825,108 +825,13 @@ async def run_mission():
                     mem_yaw = last_front_err_x * kp_yaw
                     mem_yaw = max(-15.0, min(15.0, mem_yaw))
                     await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
-                elif dist_flown < 2.5: # PUNCH THROUGH INS
+                elif dist_flown < 8.0: # PUNCH THROUGH INS KEDUA GAWANG SEKALIGUS
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
+                    await flight.send_body_velocity(drone, forward_m_s=1.2, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
-                    print(f"[AUTOPILOT] Lolos Final Gate 1! Mencari Final Gate 2...")
-                    state_phase = "FIND_FINAL_GATE_2"
-                    timeout_counter = 0
-                    has_seen_target = False
-
-        # ---------------------------------------------------------
-        # PHASE 13: FIND_FINAL_GATE_2 (Mencari Single Gate kedua)
-        # ---------------------------------------------------------
-        elif state_phase == "FIND_FINAL_GATE_2":
-            if front_status == "LOCKED" and front_class == "Single Gate" and front_area > 12000:
-                print("[AUTOPILOT] Final Gate 2 Ditemukan! Proses Nembus...")
-                state_phase = "PASS_FINAL_GATE_2"
-                timeout_counter = 0
-                has_seen_target = False
-            elif front_status == "LOCKED" and front_class == "Single Gate":
-                timeout_counter += 1
-                climb_cmd = -0.3 if DRONE_Z > -1.0 else 0.0
-                yaw_cmd = front_err_x * kp_yaw
-                await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
-            else:
-                timeout_counter += 1
-                if timeout_counter > 50:
-                    print("[AUTOPILOT] Final Gate 2 tidak ditemukan (kemungkinan sudah tertembus sekaligus)! Beralih ke FIND_LANDING...")
+                    print(f"[AUTOPILOT] Lolos Final Gate 1 & 2 Sekaligus (Jarak 8.0m)! Mencari Landing Pad...")
                     state_phase = "FIND_LANDING"
-                    timeout_counter = 0
-                else:
-                    climb_cmd = -0.3 if DRONE_Z > -1.0 else 0.0
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
-                
-        # ---------------------------------------------------------
-        # PHASE 14: PASS_FINAL_GATE_2 (Tembus Single Gate 2)
-        # ---------------------------------------------------------
-        elif state_phase == "PASS_FINAL_GATE_2":
-            if front_status == "LOCKED" and front_class == "Single Gate":
-                has_seen_target = True
-                timeout_counter = 0
-                last_front_area = front_area
-                last_front_err_x = front_err_x
-                last_front_err_y = front_err_y
-                
-                if front_area < 25000:
-                    fwd_cmd = 0.8
-                    strafe_cmd = front_err_x * kp_yaw
-                    z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
-                else:
-                    if not altitude_locked:
-                        strafe_cmd = front_err_x * kp_yaw
-                        up_cmd = (front_err_y + 150) * kp_up
-                        up_cmd = max(-0.6, min(0.6, up_cmd))
-                        fwd_cmd = 0.0
-                        
-                        if abs(front_err_x) < 30 and abs(front_err_y + 150) < 30:
-                            altitude_locked = True
-                            print("[AUTOPILOT] [FINAL GATE 2] Centered! ALTITUDE LOCKED. Going Pitbull...")
-                    else:
-                        z_err = -0.8 - DRONE_Z
-
-                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
-                        strafe_cmd = front_err_x * kp_yaw
-                        if abs(front_err_x) > 40:
-                            fwd_cmd = 0.0
-                        else:
-                            fwd_cmd = 0.8
-                            
-                        # ANTI-DRIFT: Kalau udah terlalu deket, jangan strafe mendadak
-                        if front_area > 100000:
-                            strafe_cmd = 0.0
-                await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
-            else:
-                if has_seen_target:
-                    if (last_front_err_y < 20 and abs(last_front_err_x) < 30 and last_front_area > 20000) or last_front_area > 150000 or timeout_counter > 0:
-                        if timeout_counter == 0:
-                            blind_start_x = DRONE_X
-                            blind_start_y = DRONE_Y
-                        timeout_counter += 1
-                    else:
-                        timeout_counter = 0
-                
-                dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2) if timeout_counter > 0 else 0
-                
-                if timeout_counter == 0:
-                    # FALLBACK MEMORY: Hover in place while rotating to find the gate!
-                    mem_yaw = last_front_err_x * kp_yaw
-                    mem_yaw = max(-15.0, min(15.0, mem_yaw))
-                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
-                elif dist_flown < 2.5: 
-                    z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
-                elif dist_flown < 4.2: 
-                    z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
-                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd - 0.8, yaw_deg_s=0.0)
-                else:
-                    print(f"[AUTOPILOT] Lolos Final Gate 2! Mencari Landing Pad...")
-                    state_phase = "FIND_LANDING_PAD"
                     timeout_counter = 0
                     has_seen_target = False
 
