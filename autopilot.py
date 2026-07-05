@@ -807,6 +807,8 @@ async def run_mission():
                         # ANTI-DRIFT: Kalau udah terlalu deket, jangan strafe mendadak
                         if front_area > 100000:
                             strafe_cmd = 0.0
+                
+                print(f"[AUTOPILOT] [FINAL GATE 1] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Strafe: {strafe_cmd:.2f}, Z: {up_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
             else:
                 if has_seen_target:
