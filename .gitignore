@@ -26,4 +26,5 @@ dataset/
 
 # AI Models
 *.pt
+.agents/
 evaluation.md
