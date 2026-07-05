@@ -428,13 +428,7 @@ async def run_mission():
                 last_front_err_y = front_err_y
                 last_front_err_x = front_err_x
                 yaw_cmd = front_err_x * kp_yaw
-                if front_area > 80000:
-                    print("[AUTOPILOT] Jarak sangat dekat (Area > 80000)! Memaksa masuk PUNCH_TRIPLE_GATE_1 menghindari halusinasi Yaw")
-                    state_phase = "PUNCH_TRIPLE_GATE_1"
-                    blind_start_x = DRONE_X
-                    blind_start_y = DRONE_Y
-                    continue
-
+                
                 if front_area < 12000:
                     fwd_cmd = 0.8
                     z_err = -0.8 - DRONE_Z
@@ -452,7 +446,7 @@ async def run_mission():
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
             else:
                 if has_seen_target:
-                    if last_front_area > 80000 or (last_front_area > 10000 and abs(last_front_err_x) < 30):
+                    if last_front_area > 10000 and abs(last_front_err_x) < 30:
                         print("[AUTOPILOT] Memasuki Lorong Triple Gate 1! Berpindah ke PUNCH_TRIPLE_GATE_1")
                         state_phase = "PUNCH_TRIPLE_GATE_1"
                         blind_start_x = DRONE_X
@@ -606,13 +600,7 @@ async def run_mission():
                 last_front_err_y = front_err_y
                 last_front_err_x = front_err_x
                 yaw_cmd = front_err_x * kp_yaw
-                if front_area > 80000:
-                    print("[AUTOPILOT] Jarak sangat dekat (Area > 80000)! Memaksa masuk PUNCH_TRIPLE_GATE_2 menghindari halusinasi Yaw")
-                    state_phase = "PUNCH_TRIPLE_GATE_2"
-                    blind_start_x = DRONE_X
-                    blind_start_y = DRONE_Y
-                    continue
-
+                
                 if front_area < 12000:
                     fwd_cmd = 0.8
                     z_err = -0.8 - DRONE_Z
@@ -630,7 +618,7 @@ async def run_mission():
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
             else:
                 if has_seen_target:
-                    if last_front_area > 80000 or (last_front_area > 10000 and abs(last_front_err_x) < 30):
+                    if last_front_area > 10000 and abs(last_front_err_x) < 30:
                         print("[AUTOPILOT] Memasuki Lorong Triple Gate 2! Berpindah ke PUNCH_TRIPLE_GATE_2")
                         state_phase = "PUNCH_TRIPLE_GATE_2"
                         blind_start_x = DRONE_X
