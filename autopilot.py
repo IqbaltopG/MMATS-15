@@ -529,7 +529,7 @@ async def run_mission():
                 last_down_err_y = down_err_y
                 
                 # Active Auto-Stop Braking (Gentle for Gimbal-less)
-                fwd_cmd = down_err_y * 0.0015
+                fwd_cmd = -down_err_y * 0.0015
                 strafe_cmd = down_err_x * 0.0015
                 
                 # Limit speed so it brakes instead of overshooting
@@ -565,7 +565,7 @@ async def run_mission():
                     blind_start_y = DRONE_Y
                 elif has_seen_target:
                     # FALLBACK MEMORY DOWN CAMERA: Terbang balik ke kordinat terakhir kali keliatan!
-                    fwd_cmd = max(-0.2, min(0.2, last_down_err_y * 0.0015))
+                    fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
                     strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
                     z_err = -1.5 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
@@ -909,7 +909,7 @@ async def run_mission():
                 last_down_err_y = down_err_y
                 
                 # Pake 0.0015 buat Active Braking yang gentle
-                fwd_cmd = down_err_y * 0.0015
+                fwd_cmd = -down_err_y * 0.0015
                 strafe_cmd = down_err_x * 0.0015
                 
                 # Limit speed so it brakes gently instead of overshooting
@@ -935,11 +935,14 @@ async def run_mission():
             else:
                 timeout_counter += 1
                 if timeout_counter > 50:
-                    print("[AUTOPILOT] Landing Pad Hilang! Hovering di tempat...")
-                    await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                    print("[AUTOPILOT] Landing Pad Hilang! Kembali ke FIND_LANDING_PAD...")
+                    state_phase = "FIND_LANDING_PAD"
+                    timeout_counter = 0
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
                 elif has_seen_target:
                     # FALLBACK MEMORY DOWN CAMERA
-                    fwd_cmd = max(-0.2, min(0.2, last_down_err_y * 0.0015))
+                    fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
                     strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
                     print(f"[AUTOPILOT] Landing Pad Flicker! Terbang balik pake memori... Fwd: {fwd_cmd:.2f}")
                     await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.3, yaw_deg_s=0.0)
