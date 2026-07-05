@@ -800,6 +800,7 @@ async def run_mission():
 
                         up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                         strafe_cmd = front_err_x * kp_yaw
+                        strafe_cmd = max(-0.15, min(0.15, strafe_cmd)) # ANTI-DRIFT: Clamp ketat biar ga cut corner
                         if abs(front_err_x) > 40:
                             fwd_cmd = 0.0
                         else:
