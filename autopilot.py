@@ -902,13 +902,13 @@ async def run_mission():
                 fwd_cmd = max(-0.2, min(0.2, fwd_cmd))
                 strafe_cmd = max(-0.2, min(0.2, strafe_cmd))
                 
-                print(f"[AUTOPILOT] [LANDING] Fwd: {fwd_cmd:.2f}, Strafe: {strafe_cmd:.2f}, Stable: {landing_ticks}/100")
+                print(f"[AUTOPILOT] [LANDING] Fwd: {fwd_cmd:.2f}, Strafe: {strafe_cmd:.2f}, Stable: {landing_ticks}/30, Z: {DRONE_Z:.2f}")
                 # Turun pelan-pelan (0.3 m/s) sambil centering
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.3, yaw_deg_s=0.0)
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
                     landing_ticks += 1
-                    if landing_ticks > 100: # Stabil 10 detik nyata (RTF 30%)
+                    if landing_ticks > 30: # Stabil 3 detik nyata (cukup, keburu buta kalau kelamaan)
                         print("[AUTOPILOT] Mendarat sempurna di titik tengah!")
                         await drone.action.land()
                         print("[AUTOPILOT] Menunggu 8 detik buat pendaratan fisik sebelum Auto-Reset...")
@@ -921,7 +921,16 @@ async def run_mission():
                     timeout_counter = 0
             else:
                 timeout_counter += 1
-                if timeout_counter > 50:
+                # FORCE LAND: Kalau udah terlalu rendah, kamera bawah pasti buta. Paksa mendarat!
+                if DRONE_Z > -0.4 and has_seen_target:
+                    print(f"[AUTOPILOT] Ketinggian kritis ({DRONE_Z:.2f}m)! Kamera bawah buta. FORCE LANDING!")
+                    await drone.action.land()
+                    print("[AUTOPILOT] Menunggu 8 detik buat pendaratan fisik sebelum Auto-Reset...")
+                    await asyncio.sleep(8)
+                    import os
+                    os.system("./respawn.sh")
+                    break
+                elif timeout_counter > 50:
                     print("[AUTOPILOT] Landing Pad Hilang! Kembali ke FIND_LANDING_PAD...")
                     state_phase = "FIND_LANDING_PAD"
                     timeout_counter = 0
@@ -932,7 +941,7 @@ async def run_mission():
                     # FALLBACK MEMORY DOWN CAMERA
                     fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
                     strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
-                    print(f"[AUTOPILOT] Landing Pad Flicker! Terbang balik pake memori... Fwd: {fwd_cmd:.2f}")
+                    print(f"[AUTOPILOT] Landing Pad Flicker! Terbang balik pake memori... Fwd: {fwd_cmd:.2f}, Z: {DRONE_Z:.2f}")
                     await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.3, yaw_deg_s=0.0)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.5, yaw_deg_s=0.0)
