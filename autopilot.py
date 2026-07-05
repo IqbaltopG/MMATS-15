@@ -19,17 +19,13 @@ async def telemetry_task(drone):
         DRONE_Y = pos_vel.position.east_m
         DRONE_Z = pos_vel.position.down_m
 
-async def lidar_task(drone):
-    global LIDAR_LEFT_DIST, LIDAR_RIGHT_DIST
-    try:
-        async for sensor in get_distance_sensor_stream(drone):
-            # Asumsi orientasi ID: 1 Kiri, 2 Kanan (bisa disesuaikan dengan parameter MAVLink lu nanti)
-            if sensor.id == 1:
-                LIDAR_LEFT_DIST = sensor.current_distance_m
-            elif sensor.id == 2:
-                LIDAR_RIGHT_DIST = sensor.current_distance_m
-    except Exception as e:
-        print(f"[AUTOPILOT] Lidar task warning (abaikan kalau blm ada hardware): {e}")
+def set_lidar_left(dist):
+    global LIDAR_LEFT_DIST
+    LIDAR_LEFT_DIST = dist
+
+def set_lidar_right(dist):
+    global LIDAR_RIGHT_DIST
+    LIDAR_RIGHT_DIST = dist
 
 # GLOBAL STATE DARI UDP
 TARGET_STATE_FRONT = {"status": "LOST", "class": "none", "error_x": 0, "error_y": 0, "area": 0}
@@ -78,7 +74,7 @@ async def run_mission():
     
     print("[AUTOPILOT] Starting Telemetry & Lidar Tasks...")
     asyncio.create_task(telemetry_task(drone))
-    asyncio.create_task(lidar_task(drone))
+    flight.start_gazebo_lidar(set_lidar_left, set_lidar_right)
 
     print("[AUTOPILOT] Memulai Smart Takeoff...")
     await flight.arm_and_takeoff(drone, altitude_m=1.5)

@@ -78,9 +78,31 @@ async def send_body_velocity(drone: System, forward_m_s, right_m_s, down_m_s, ya
         VelocityBodyYawspeed(forward_m_s, right_m_s, down_m_s, yaw_deg_s)
     )
 
-async def get_distance_sensor_stream(drone: System):
+import subprocess
+import re
+import threading
+
+def _read_gazebo_lidar(topic, callback):
     """
-    Generator untuk stream telemetry LiDAR/Sensor Jarak dari MAVSDK.
+    Subprocess thread untuk baca LiDAR dari Gazebo tanpa butuh terminal terpisah.
     """
-    async for sensor in drone.telemetry.distance_sensor():
-        yield sensor
+    print(f"[FLIGHT] Menghubungkan ke LiDAR Gazebo: {topic}...")
+    try:
+        process = subprocess.Popen(['gz', 'topic', '-e', '-t', topic], stdout=subprocess.PIPE, text=True)
+        for line in process.stdout:
+            match = re.search(r'ranges:\s*([\d\.]+)', line)
+            if match:
+                dist = float(match.group(1))
+                if dist > 5.0: dist = 5.0
+                callback(dist)
+    except Exception as e:
+        print(f"[FLIGHT] Gagal baca LiDAR Gazebo ({topic}): {e}")
+
+def start_gazebo_lidar(left_callback, right_callback):
+    """
+    Jalankan pembacaan LiDAR Gazebo di background thread biar autopilot.py nggak stuck.
+    """
+    t1 = threading.Thread(target=_read_gazebo_lidar, args=('/lidar_left/scan', left_callback), daemon=True)
+    t2 = threading.Thread(target=_read_gazebo_lidar, args=('/lidar_right/scan', right_callback), daemon=True)
+    t1.start()
+    t2.start()
