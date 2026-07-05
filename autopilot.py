@@ -40,11 +40,18 @@ UDP_PORT = 5005
 
 class UDPReceiverProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, data, addr):
-        global TARGET_STATE_FRONT, TARGET_STATE_DOWN
+        global TARGET_STATE_FRONT, TARGET_STATE_DOWN, LIDAR_LEFT_DIST, LIDAR_RIGHT_DIST
         try:
             message = data.decode('utf-8')
             parsed = json.loads(message)
-            if parsed.get("camera") == "down":
+            
+            if parsed.get("camera") == "lidar":
+                side = parsed.get("side")
+                if side == "left":
+                    LIDAR_LEFT_DIST = float(parsed.get("range", 5.0))
+                elif side == "right":
+                    LIDAR_RIGHT_DIST = float(parsed.get("range", 5.0))
+            elif parsed.get("camera") == "down":
                 TARGET_STATE_DOWN.update(parsed)
             else:
                 TARGET_STATE_FRONT.update(parsed)
