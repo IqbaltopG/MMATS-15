@@ -77,3 +77,10 @@ async def send_body_velocity(drone: System, forward_m_s, right_m_s, down_m_s, ya
     await drone.offboard.set_velocity_body(
         VelocityBodyYawspeed(forward_m_s, right_m_s, down_m_s, yaw_deg_s)
     )
+
+async def get_distance_sensor_stream(drone: System):
+    """
+    Generator untuk stream telemetry LiDAR/Sensor Jarak dari MAVSDK.
+    """
+    async for sensor in drone.telemetry.distance_sensor():
+        yield sensor

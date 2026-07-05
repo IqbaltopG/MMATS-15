@@ -106,3 +106,13 @@ When centering over ground targets (ArUco / Drop Box), the YOLO model occasional
 ## 8. Phase Reversion & Instant Overshoot Loops
 When the drone lost the target during centering, it reverted its state machine back to the `FIND_` phase. However, it did not reset its `blind_start` tracking coordinates. Because it had already flown several meters, reverting instantly triggered the `dist_flown > 2.5m` overshoot logic, forcing it backwards in an infinite "Maju Mundur Cantik" loop.
 * **Lesson Learned:** State machine reversions MUST be atomic. When reverting a state, all tracking variables associated with that state (like initial coordinates) must be wiped clean to prevent phantom triggers from stale memory.
+
+## 9. The "True Nature" of Physics (Non-Deterministic Bugs)
+Because SITL simulates real physics, perfect code on one run can crash on the next due to micro-variations (like a 1cm drift causing a 70px bounding box shift).
+* **Lesson Learned:** 
+  1. **Anti-Drift:** When targets get too close (Area > 100k), pixel tracking becomes hyper-sensitive. We must force lateral corrections to zero (`strafe_cmd = 0.0`) to avoid injecting momentum just before entering a blind spot.
+  2. **Premature Punching:** Hardware limits (like camera FOV) cause YOLO to lose targets prematurely. Instead of arbitrarily inflating area thresholds, we must use multi-conditional logic (e.g. `Area > threshold AND yaw_error < threshold`) to guarantee the physical state of the drone before committing to a blind maneuver.
+
+## 10. ROS vs MAVSDK (Microservice Architecture)
+Adding ROS 2 solely to bridge LiDAR data into the Autopilot introduces severe processing overhead, defeating the purpose of a lightweight companion computer setup.
+* **Lesson Learned:** Stick to pure MAVSDK endpoints (e.g., `drone.telemetry.distance_sensor()`) embedded within the existing `flight.py` microservice. This decouples the vision AI (`vision_daemon.py`) from the flight controller (`autopilot.py`) without requiring an intermediary bloated pub/sub middleware.
