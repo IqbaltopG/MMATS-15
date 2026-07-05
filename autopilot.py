@@ -851,8 +851,13 @@ async def run_mission():
                 await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
             else:
                 timeout_counter += 1
-                climb_cmd = -0.3 if DRONE_Z > -1.0 else 0.0
-                await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                if timeout_counter > 50:
+                    print("[AUTOPILOT] Final Gate 2 tidak ditemukan (kemungkinan sudah tertembus sekaligus)! Beralih ke FIND_LANDING...")
+                    state_phase = "FIND_LANDING"
+                    timeout_counter = 0
+                else:
+                    climb_cmd = -0.3 if DRONE_Z > -1.0 else 0.0
+                    await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 
         # ---------------------------------------------------------
         # PHASE 14: PASS_FINAL_GATE_2 (Tembus Single Gate 2)
