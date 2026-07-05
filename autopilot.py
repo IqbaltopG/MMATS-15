@@ -782,6 +782,7 @@ async def run_mission():
                 if front_area < 25000:
                     fwd_cmd = 0.8
                     strafe_cmd = front_err_x * kp_yaw
+                    strafe_cmd = max(-0.15, min(0.15, strafe_cmd)) # ANTI-DRIFT: Clamp juga di approach phase!
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                 else:
