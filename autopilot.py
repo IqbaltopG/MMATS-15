@@ -778,16 +778,23 @@ async def run_mission():
                 last_front_err_x = front_err_x
                 last_front_err_y = front_err_y
                 
-                # Logic: Mendekat dulu, baru Strafe untuk centering X dan Y (hindari top bar)
+                # Logic: Mendekat dulu, baru Strafe & Yaw untuk centering X (drift alignment)
                 if front_area < 25000:
                     fwd_cmd = 0.8
                     strafe_cmd = front_err_x * kp_yaw
-                    strafe_cmd = max(-0.15, min(0.15, strafe_cmd)) # ANTI-DRIFT: Clamp juga di approach phase!
+                    strafe_cmd = max(-0.15, min(0.15, strafe_cmd)) # ANTI-DRIFT: Clamp ketat
+                    yaw_cmd = front_err_x * 0.08 # Rotasi pelan ke target
+                    yaw_cmd = max(-10.0, min(10.0, yaw_cmd))
+                    
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
                 else:
                     if not altitude_locked:
                         strafe_cmd = front_err_x * kp_yaw
+                        strafe_cmd = max(-0.15, min(0.15, strafe_cmd))
+                        yaw_cmd = front_err_x * 0.08
+                        yaw_cmd = max(-10.0, min(10.0, yaw_cmd))
+                        
                         # Turun ke bawah top bar
                         up_cmd = (front_err_y + 150) * kp_up
                         up_cmd = max(-0.6, min(0.6, up_cmd))
@@ -798,21 +805,25 @@ async def run_mission():
                             print("[AUTOPILOT] [FINAL GATE 1] Centered! ALTITUDE LOCKED. Going Pitbull...")
                     else:
                         z_err = -0.8 - DRONE_Z
-
                         up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
+                        
                         strafe_cmd = front_err_x * kp_yaw
-                        strafe_cmd = max(-0.15, min(0.15, strafe_cmd)) # ANTI-DRIFT: Clamp ketat biar ga cut corner
+                        strafe_cmd = max(-0.15, min(0.15, strafe_cmd)) # ANTI-DRIFT: Clamp ketat
+                        yaw_cmd = front_err_x * 0.08
+                        yaw_cmd = max(-10.0, min(10.0, yaw_cmd))
+                        
                         if abs(front_err_x) > 40:
                             fwd_cmd = 0.0
                         else:
                             fwd_cmd = 0.8
                             
-                        # ANTI-DRIFT: Kalau udah terlalu deket, jangan strafe mendadak
+                        # ANTI-DRIFT: Kalau udah terlalu deket, tahan lateral & rotasi mendadak
                         if front_area > 100000:
                             strafe_cmd = 0.0
+                            yaw_cmd = 0.0
                 
-                print(f"[AUTOPILOT] [FINAL GATE 1] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Strafe: {strafe_cmd:.2f}, Z: {up_cmd:.2f}")
-                await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
+                print(f"[AUTOPILOT] [FINAL GATE 1] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Strafe: {strafe_cmd:.2f}, Yaw: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
+                await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
             else:
                 if has_seen_target:
                     if (last_front_err_y < 20 and abs(last_front_err_x) < 30 and last_front_area > 20000) or last_front_area > 150000 or timeout_counter > 0:
@@ -928,8 +939,8 @@ async def run_mission():
                     await drone.action.land()
                     print("[AUTOPILOT] Menunggu 8 detik buat pendaratan fisik sebelum Auto-Reset...")
                     await asyncio.sleep(8)
-                    import os
-                    os.system("./respawn.sh")
+                    # import os
+                    # os.system("./respawn.sh")
                     break
                 elif timeout_counter > 50:
                     print("[AUTOPILOT] Landing Pad Hilang! Kembali ke FIND_LANDING_PAD...")
