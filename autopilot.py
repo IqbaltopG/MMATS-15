@@ -84,6 +84,7 @@ async def run_mission():
     altitude_locked = False
     blind_start_x = 0.0
     blind_start_y = 0.0
+    landing_ticks = 0
     
     # PID Constants
     kp_yaw = 0.005
@@ -900,13 +901,13 @@ async def run_mission():
                 fwd_cmd = max(-0.2, min(0.2, fwd_cmd))
                 strafe_cmd = max(-0.2, min(0.2, strafe_cmd))
                 
-                print(f"[AUTOPILOT] [LANDING] Fwd: {fwd_cmd:.2f}, Strafe: {strafe_cmd:.2f}, Tick: {timeout_counter}/50")
+                print(f"[AUTOPILOT] [LANDING] Fwd: {fwd_cmd:.2f}, Strafe: {strafe_cmd:.2f}, Stable: {landing_ticks}/100")
                 # Turun pelan-pelan (0.3 m/s) sambil centering
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.3, yaw_deg_s=0.0)
                 
                 if abs(down_err_x) < 80 and abs(down_err_y) < 80:
-                    timeout_counter += 1
-                    if timeout_counter > 100: # Stabil 10 detik nyata (RTF 30%)
+                    landing_ticks += 1
+                    if landing_ticks > 100: # Stabil 10 detik nyata (RTF 30%)
                         print("[AUTOPILOT] Mendarat sempurna di titik tengah!")
                         await drone.action.land()
                         print("[AUTOPILOT] Menunggu 8 detik buat pendaratan fisik sebelum Auto-Reset...")
@@ -915,6 +916,7 @@ async def run_mission():
                         os.system("./respawn.sh")
                         break
                 else:
+                    landing_ticks = 0
                     timeout_counter = 0
             else:
                 timeout_counter += 1
@@ -922,6 +924,7 @@ async def run_mission():
                     print("[AUTOPILOT] Landing Pad Hilang! Kembali ke FIND_LANDING_PAD...")
                     state_phase = "FIND_LANDING_PAD"
                     timeout_counter = 0
+                    landing_ticks = 0
                     blind_start_x = DRONE_X
                     blind_start_y = DRONE_Y
                 elif has_seen_target:
