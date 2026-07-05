@@ -70,12 +70,25 @@ def start_vision_daemon():
                 
                 for box in boxes:
                     bx1, by1, bx2, by2 = box.xyxy[0].cpu().numpy()
+                    
+                    # CLAMPING: Cegah bounding box tumpah ke luar layar (Penyebab X = -907)
+                    bx1 = max(0.0, min(float(width), float(bx1)))
+                    by1 = max(0.0, min(float(height), float(by1)))
+                    bx2 = max(0.0, min(float(width), float(bx2)))
+                    by2 = max(0.0, min(float(height), float(by2)))
+                    
                     b_area = (bx2 - bx1) * (by2 - by1)
                     if b_area > max_area:
                         max_area = b_area
                         best_box = box
                 
+                # Gunakan koordinat box terbaik (juga di-clamp)
                 x1, y1, x2, y2 = best_box.xyxy[0].cpu().numpy()
+                x1 = max(0.0, min(float(width), float(x1)))
+                y1 = max(0.0, min(float(height), float(y1)))
+                x2 = max(0.0, min(float(width), float(x2)))
+                y2 = max(0.0, min(float(height), float(y2)))
+                
                 cls_id = int(best_box.cls[0].item())
                 class_name = model.names[cls_id]
                 
