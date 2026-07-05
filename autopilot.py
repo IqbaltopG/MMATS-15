@@ -428,12 +428,14 @@ async def run_mission():
                 last_front_err_y = front_err_y
                 last_front_err_x = front_err_x
                 yaw_cmd = front_err_x * kp_yaw
-                
+                if front_area > 80000:
+                    print("[AUTOPILOT] Jarak sangat dekat (Area > 80000)! Memaksa masuk PUNCH_TRIPLE_GATE_1 menghindari halusinasi Yaw")
+                    state_phase = "PUNCH_TRIPLE_GATE_1"
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
+                    continue
+
                 if front_area < 12000:
-                    fwd_cmd = 0.8
-                    z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
-                elif front_area > 80000:
                     fwd_cmd = 0.8
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
@@ -604,13 +606,14 @@ async def run_mission():
                 last_front_err_y = front_err_y
                 last_front_err_x = front_err_x
                 yaw_cmd = front_err_x * kp_yaw
-                
+                if front_area > 80000:
+                    print("[AUTOPILOT] Jarak sangat dekat (Area > 80000)! Memaksa masuk PUNCH_TRIPLE_GATE_2 menghindari halusinasi Yaw")
+                    state_phase = "PUNCH_TRIPLE_GATE_2"
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
+                    continue
+
                 if front_area < 12000:
-                    fwd_cmd = 0.8
-                    z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
-                elif front_area > 80000:
-                    # Kalau udah raksasa (terlalu deket), hajar aja maju!
                     fwd_cmd = 0.8
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
