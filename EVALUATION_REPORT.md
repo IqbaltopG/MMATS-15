@@ -116,3 +116,7 @@ Because SITL simulates real physics, perfect code on one run can crash on the ne
 ## 10. ROS vs MAVSDK (Microservice Architecture)
 Adding ROS 2 solely to bridge LiDAR data into the Autopilot introduces severe processing overhead, defeating the purpose of a lightweight companion computer setup.
 * **Lesson Learned:** Stick to pure MAVSDK endpoints (e.g., `drone.telemetry.distance_sensor()`) embedded within the existing `flight.py` microservice. This decouples the vision AI (`vision_daemon.py`) from the flight controller (`autopilot.py`) without requiring an intermediary bloated pub/sub middleware.
+
+## 11. ⚠️ CRITICAL FOR FUTURE AI: Hardware Abstraction & Simulation Hacks
+Do NOT inject simulation-specific tools (like `subprocess.Popen(['gz', 'topic'])`) into core microservices like `flight.py`. `flight.py` must remain a 100% pure MAVLink/MAVSDK hardware abstraction layer.
+* **Lesson Learned:** If simulation data is missing (e.g., Gazebo LiDAR not reaching MAVSDK), the fix must be applied to the simulation environment itself (e.g., bridging the `.sdf` to MAVLink) or via a separate external bridge script. Polluting `flight.py` with simulation hacks destroys the ability to deploy the code directly to a physical Pixhawk drone without rewriting the codebase. Always treat `autopilot.py` and `flight.py` as if they are already running on real hardware.

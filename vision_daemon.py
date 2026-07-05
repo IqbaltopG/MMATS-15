@@ -1,12 +1,15 @@
 import cv2
 import socket
 import json
+import numpy as np
 import time
+import subprocess
+import re
+import threading
 from ultralytics import YOLO
 
 # CONFIGURATION
 UDP_IP = "127.0.0.1"
-UDP_PORT = 5005
 MODEL_PATH = "/home/ambatron/DRONE/Krti_model.pt" # Menggunakan .pt dulu
 CONFIDENCE_THRESHOLD = 0.25
 
@@ -14,10 +17,13 @@ CONFIDENCE_THRESHOLD = 0.25
 FRONT_CAM_GST = 'udpsrc port=5600 ! application/x-rtp, payload=96 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink sync=false drop=true max-buffers=1'
 DOWN_CAM_GST = 'udpsrc port=5601 ! application/x-rtp, payload=96 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink sync=false drop=true max-buffers=1'
 
+# UDP CONFIG
+UDP_IP = "127.0.0.1"
+UDP_PORT = 5005
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 def start_vision_daemon():
     print(f"[VISION] Memulai MATS-15 Vision Daemon (DUAL CAMERA MODE)...")
-    
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     print(f"[VISION] Loading model: {MODEL_PATH}")
     model = YOLO(MODEL_PATH)
@@ -101,5 +107,28 @@ def start_vision_daemon():
         cap_down.release()
         sock.close()
 
+def read_gazebo_lidar(topic, side):
+    """
+    Meniru sensor LiDAR fisik yang dicolok ke Raspberry Pi.
+    Baca dari Gazebo, kirim lewat UDP ke Autopilot.
+    """
+    print(f"[VISION DAEMON] Memulai Lidar Bridge untuk {topic}...")
+    try:
+        process = subprocess.Popen(['gz', 'topic', '-e', '-t', topic], stdout=subprocess.PIPE, text=True)
+        for line in process.stdout:
+            match = re.search(r'ranges:\s*([\d\.]+)', line)
+            if match:
+                dist = float(match.group(1))
+                if dist > 5.0: dist = 5.0
+                data = {"camera": "lidar", "side": side, "range": dist}
+                sock.sendto(json.dumps(data).encode('utf-8'), (UDP_IP, UDP_PORT))
+    except Exception as e:
+        print(f"[VISION DAEMON] Error LiDAR {topic}: {e}")
+
 if __name__ == "__main__":
+    # Start Lidar Threads (Background)
+    threading.Thread(target=read_gazebo_lidar, args=('/lidar_left/scan', 'left'), daemon=True).start()
+    threading.Thread(target=read_gazebo_lidar, args=('/lidar_right/scan', 'right'), daemon=True).start()
+    
+    # Start Vision Camera (Foreground)
     start_vision_daemon()
