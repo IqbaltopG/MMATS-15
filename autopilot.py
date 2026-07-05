@@ -830,6 +830,7 @@ async def run_mission():
                 elif dist_flown < 8.0: # PUNCH THROUGH INS KEDUA GAWANG SEKALIGUS
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    print(f"[AUTOPILOT] [FINAL GATE PUNCH] Jarak Tempuh INS: {dist_flown:.2f}m / 8.0m")
                     await flight.send_body_velocity(drone, forward_m_s=1.2, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
                     print(f"[AUTOPILOT] Lolos Final Gate 1 & 2 Sekaligus (Jarak 8.0m)! Mencari Landing Pad...")
