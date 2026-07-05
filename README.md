@@ -115,6 +115,11 @@ Because of this, the `timeout_counter` thresholds in our `autopilot.py` state ma
 ### 4. "Stutter Creep" Physics Hack
 We use raw physics to solve our camera FOV problems. When the drone flies forward, the nose pitches down, aiming the downward camera backward (creating a massive blind spot). Instead of praying it sees the ArUco pad, we implemented a "stutter creep." The drone flies forward for 1 second, then slams the brakes for 1 second. The braking violently levels the pitch, forcing the downward camera to point perfectly vertical like a spotlight, guaranteeing we sweep the floor. It's brute-force engineering.
 
-## 🏆 MILESTONE ACHIEVED: FULL END-TO-END MISSION COMPLETION 🏆
-* **Status:** ACHIEVED (July 5th, 2026). The EVOSKY MMATS-15 successfully ran the entire KRTI trajectory autonomously (Takeoff -> Single Gates -> Triple Gate -> Red Drop Box -> Final Gates -> Precision Landing).
-* **Significance:** Proves that the Decoupled Microservice Architecture (Vision UDP -> Autopilot State Machine) works flawlessly in a high-stress simulated environment. All major algorithmic roadblocks (RTF scaling, hallucinated YOLO logic, state machine deadlocks, precision blind-spots) have been systematically eliminated. Zero GPS waypoint reliance. Pure Vision + INS.
+## 🏆 MILESTONE ACHIEVED: 🎯 Final Milestone: Full Trajectory Cleared!
+- 🟩 **Status:** **COMPLETED** (July 2026).
+- 🏆 **Achievement:** The drone successfully completed the entire KRTI trajectory end-to-end (Takeoff -> Single Gates -> Triple Gate -> Red Drop Box -> Final Gates -> Precision Landing).
+- 🛠️ **Resolution:** The final "Deadlock" issue (where the drone hovered indefinitely at point-blank range) was resolved by forcing `fwd_cmd = 0.8` at `Area > 100000`, prioritizing momentum over centering at critical proximity.
+
+> [!WARNING]
+> **Sorry for the spaghetti code!** 🍝
+> `autopilot.py` is currently a 900+ line monolithic `if-elif` ladder. It is actively a work in progress. We are officially entering the **"Make it Right, Make it Fast"** phase to refactor this into clean, modular state machines!
