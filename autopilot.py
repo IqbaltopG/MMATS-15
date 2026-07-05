@@ -657,16 +657,84 @@ async def run_mission():
         # PHASE 9: FIND_ARUCO_3 (Mencari belokan kiri)
         # ---------------------------------------------------------
         elif state_phase == "FIND_ARUCO_3":
-            if down_status == "LOCKED" and down_class == "Aruco":
-                print("[AUTOPILOT] Aruco 3 Ketemu di kamera bawah! Belok kiri...")
-                state_phase = "TURN_ARUCO_3"
+            if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
+                print("[AUTOPILOT] Aruco 3 Terlihat di Kamera Bawah! AUTO-STOP & Memulai Centering...")
+                state_phase = "CENTER_ARUCO_3"
                 timeout_counter = 0
-            elif front_status == "LOCKED" and front_class == "Aruco Area":
-                # Kunci target dari jauh pakai kamera depan biar gak nyasar/meleset
-                strafe_cmd = front_err_x * kp_yaw
-                await flight.send_body_velocity(drone, forward_m_s=1.0, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
+                has_seen_target = False
             else:
-                await flight.send_body_velocity(drone, forward_m_s=1.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
+                z_err = -1.5 - DRONE_Z
+                climb_cmd = max(-0.8, min(0.5, z_err * 0.8))
+                
+                if front_status == "LOCKED" and front_class in ["Aruco", "Aruco Area"]:
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
+                    has_seen_target = True
+                    timeout_counter = 0
+                    yaw_cmd = front_err_x * kp_yaw
+                    
+                    if abs(front_err_x) > 40:
+                        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                    else:
+                        await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=yaw_cmd)
+                elif has_seen_target:
+                    dist_flown = math.sqrt((DRONE_X - blind_start_x)**2 + (DRONE_Y - blind_start_y)**2)
+                    timeout_counter += 1
+                    
+                    if dist_flown > 2.5:
+                        timeout_counter = 500
+                        
+                    if timeout_counter >= 500:
+                        print(f"[AUTOPILOT] Kebablasan WP3 di blind spot! Terbang mundur...")
+                        await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    else:
+                        fwd_creep = 0.3 if timeout_counter % 20 < 10 else 0.0
+                        await flight.send_body_velocity(drone, forward_m_s=fwd_creep, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                else:
+                    await flight.send_body_velocity(drone, forward_m_s=0.6, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+
+        # ---------------------------------------------------------
+        # PHASE 9.5: CENTER_ARUCO_3 (Mensejajarkan Drone dengan WP3)
+        # ---------------------------------------------------------
+        elif state_phase == "CENTER_ARUCO_3":
+            if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
+                has_seen_target = True
+                last_down_err_x = down_err_x
+                last_down_err_y = down_err_y
+                
+                fwd_cmd = -down_err_y * 0.0015
+                strafe_cmd = down_err_x * 0.0015
+                fwd_cmd = max(-0.2, min(0.2, fwd_cmd))
+                strafe_cmd = max(-0.2, min(0.2, strafe_cmd))
+                z_err = -1.5 - DRONE_Z
+                up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                
+                await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
+                
+                if abs(down_err_x) < 20 and abs(down_err_y) < 20:
+                    timeout_counter += 1
+                    completion_threshold = 50 if down_class == "Aruco" else 150
+                    if timeout_counter > completion_threshold:
+                        print("[AUTOPILOT] Presisi WP3 Tercapai! Mutar kiri nyari Final Gate 1...")
+                        state_phase = "TURN_ARUCO_3"
+                        timeout_counter = 0
+                        has_seen_target = False
+                else:
+                    timeout_counter = 0
+            else:
+                timeout_counter += 1
+                if timeout_counter > 50:
+                    print("[AUTOPILOT] WP3 Hilang! Kembali ke FIND_ARUCO_3...")
+                    state_phase = "FIND_ARUCO_3"
+                    timeout_counter = 0
+                    blind_start_x = DRONE_X
+                    blind_start_y = DRONE_Y
+                elif has_seen_target:
+                    fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
+                    strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
+                    z_err = -1.5 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
 
         # ---------------------------------------------------------
         # PHASE 10: TURN_ARUCO_3 (Belok Kiri 90 derajat)
