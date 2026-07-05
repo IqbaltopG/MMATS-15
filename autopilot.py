@@ -821,6 +821,7 @@ async def run_mission():
                         if front_area > 100000:
                             strafe_cmd = 0.0
                             yaw_cmd = 0.0
+                            fwd_cmd = 0.8 # Paksa maju! Jangan berhenti buat centering kalau udah point-blank
                 
                 print(f"[AUTOPILOT] [FINAL GATE 1] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Strafe: {strafe_cmd:.2f}, Yaw: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
