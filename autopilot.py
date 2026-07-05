@@ -433,6 +433,10 @@ async def run_mission():
                     fwd_cmd = 0.8
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                elif front_area > 80000:
+                    fwd_cmd = 0.8
+                    z_err = -0.8 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
                 else:
                     if abs(front_err_x) > 40:
                         fwd_cmd = 0.0
@@ -446,7 +450,7 @@ async def run_mission():
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
             else:
                 if has_seen_target:
-                    if last_front_area > 10000 and abs(last_front_err_x) < 30:
+                    if last_front_area > 80000 or (last_front_area > 10000 and abs(last_front_err_x) < 30):
                         print("[AUTOPILOT] Memasuki Lorong Triple Gate 1! Berpindah ke PUNCH_TRIPLE_GATE_1")
                         state_phase = "PUNCH_TRIPLE_GATE_1"
                         blind_start_x = DRONE_X
@@ -605,6 +609,11 @@ async def run_mission():
                     fwd_cmd = 0.8
                     z_err = -0.8 - DRONE_Z
                     up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                elif front_area > 80000:
+                    # Kalau udah raksasa (terlalu deket), hajar aja maju!
+                    fwd_cmd = 0.8
+                    z_err = -0.8 - DRONE_Z
+                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
                 else:
                     if abs(front_err_x) > 40:
                         fwd_cmd = 0.0
@@ -618,7 +627,7 @@ async def run_mission():
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
             else:
                 if has_seen_target:
-                    if last_front_area > 10000 and abs(last_front_err_x) < 30:
+                    if last_front_area > 80000 or (last_front_area > 10000 and abs(last_front_err_x) < 30):
                         print("[AUTOPILOT] Memasuki Lorong Triple Gate 2! Berpindah ke PUNCH_TRIPLE_GATE_2")
                         state_phase = "PUNCH_TRIPLE_GATE_2"
                         blind_start_x = DRONE_X
