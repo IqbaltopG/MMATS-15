@@ -138,6 +138,11 @@ async def run_mission():
                             fwd_cmd = 0.0 # Kalo melenceng X-nya aja baru ngerem
                         else:
                             fwd_cmd = 0.8
+                            
+                        # ANTI-DRIFT: Kalau udah terlalu deket (Bounding Box nutupin layar), 
+                        # jangan ngelakuin micro-correction nyamping karena pixel error-nya nggak akurat
+                        if front_area > 100000:
+                            strafe_cmd = 0.0
                         
                     print(f"[AUTOPILOT] [GATE 1] Centering (Area: {front_area}). Strafe: {strafe_cmd:.2f}, Z: {up_cmd:.2f}, Lock: {altitude_locked}")
 
@@ -808,6 +813,10 @@ async def run_mission():
                             fwd_cmd = 0.0
                         else:
                             fwd_cmd = 0.8
+                            
+                        # ANTI-DRIFT: Kalau udah terlalu deket, jangan strafe mendadak
+                        if front_area > 100000:
+                            strafe_cmd = 0.0
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
             else:
                 if has_seen_target:
@@ -890,6 +899,10 @@ async def run_mission():
                             fwd_cmd = 0.0
                         else:
                             fwd_cmd = 0.8
+                            
+                        # ANTI-DRIFT: Kalau udah terlalu deket, jangan strafe mendadak
+                        if front_area > 100000:
+                            strafe_cmd = 0.0
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
             else:
                 if has_seen_target:
