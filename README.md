@@ -8,14 +8,15 @@
 ## 📌 Executive Summary
 Listen up. This repo contains **MMATS-15**, a highly aggressive, brute-force autonomous targeting architecture for precision payload delivery (X500 frame). We didn't build this to look pretty. We built it following the **KISS (Keep It Simple, Stupid)** principle because the hardware we are running on (budget laptops for SITL, Raspberry Pi 5 for Edge) will literally melt if you try to shove a bloated ROS2 framework down its throat. 
 
-This is raw UDP microservices. It's got time-dilation physics compensation, "Tunnel Blind Charge" memory buffers, and zero-cost sensor fusion. The state machine is pure spaghetti `if/else` chaos right now because we are in the "Make It Work" phase, and honestly, we don't care if you judge us. It lands the drone. 
+This is raw UDP microservices. It's got time-dilation physics compensation, "Tunnel Blind Charge" memory buffers, and zero-cost sensor fusion. The legacy spaghetti code has been entirely rewritten into a robust Object-Oriented State Machine. It's clean, it's decoupled, and it lands the drone flawlessly. 
 
 ## 🛠️ Tech Stack
-* **Core Logic:** Python 3.10, MAVSDK
+* **Core Logic (Autopilot):** Python 3.10, MAVSDK, asyncio, UDP Sockets
+* **Computer Vision (Daemon):** YOLOv8 (Ultralytics), PyTorch, OpenCV
 * **Flight Stack:** PX4 Autopilot
-* **Simulation Engine:** Gazebo (gz_x500)
+* **Simulation Engine:** Gazebo Harmonic (gz_x500)
 * **Ground Control Station:** QGroundControl (QGC)
-* **OS Environment:** Xubuntu / Windows 11 (via WSL2)
+* **OS Environment:** Xubuntu 22.04 LTS / Windows 11 (via WSL2)
 
 ---
 
