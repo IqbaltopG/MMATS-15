@@ -102,8 +102,10 @@ Before you dump a stack trace in the group chat, use your brain:
 ### 1. Zero-Cost Sensor Fusion (LiDAR + Bounding Box Area)
 Processing 3D point clouds from a depth camera uses way too much CPU and network I/O. We threw that out. Instead, MMATS-15 extracts the pixel area of the YOLO bounding box `(bx2 - bx1) * (by2 - by1)` as a dirt-cheap pseudo-depth metric. On the physical drone, we slam this together with a downward LiDAR for 2-way verification. It’s cheap, it’s fast, and it works.
 
-### 2. The Microservice Split
-We don't cram neural network inference and flight controls into the same loop. `vision_daemon.py` aggressively processes frames and blasts UDP packets containing bounding boxes to `autopilot.py`. This ensures the flight controller loop runs at a strict 10Hz without waiting for YOLO to finish thinking. If you put them in the same file, the drone would have a stroke.
+### 2. The Microservice Split & OOP State Machine
+We don't cram neural network inference and flight controls into the same loop. `vision_daemon.py` aggressively processes frames and blasts UDP packets containing bounding boxes to `autopilot.py`. This ensures the flight controller loop runs at a strict 10Hz without waiting for YOLO to finish thinking.
+
+The core flight logic has been decoupled into a pure **Object-Oriented Programming (OOP) State Machine** (`states.py`). We burned the old 900-line monolithic `if-elif` spaghetti code to the ground. Every phase of the mission (Takeoff, Line Follow, Gate Centering, Landing) is now an isolated class inheriting from `BaseState`, ensuring that memory buffers (`ctx`) and transitions are bulletproof and hardware-agnostic.
 
 ### 3. Simulation Time-Dilation (RTF Scaling Hack)
 If you run Gazebo SITL on a potato laptop, the physics engine will choke and run at **30-40% Real-Time Factor (RTF)**. That means 10 real seconds is only 3-4 physical seconds in the simulator.
@@ -115,11 +117,10 @@ Because of this, the `timeout_counter` thresholds in our `autopilot.py` state ma
 ### 4. "Stutter Creep" Physics Hack
 We use raw physics to solve our camera FOV problems. When the drone flies forward, the nose pitches down, aiming the downward camera backward (creating a massive blind spot). Instead of praying it sees the ArUco pad, we implemented a "stutter creep." The drone flies forward for 1 second, then slams the brakes for 1 second. The braking violently levels the pitch, forcing the downward camera to point perfectly vertical like a spotlight, guaranteeing we sweep the floor. It's brute-force engineering.
 
+### 5. Blind Spot Memory & Safe Reversing
+When traversing complex geometries (like Drop Boxes or Landing Pads), the drone enters a camera blind spot between the Front and Down cameras. If the YOLO vision drops, the drone executes a **Safe Reversing Fallback**. Instead of reversing blindly and crashing into obstacles behind it, it tracks physical GPS displacement. If it reverses more than 2.0 meters without re-acquiring the target, it will abort the reverse and execute a safe Hover lock, demanding manual or secondary logic override.
+
 ## 🏆 MILESTONE ACHIEVED: 🎯 Final Milestone: Full Trajectory Cleared!
 - 🟩 **Status:** **COMPLETED** (July 2026).
 - 🏆 **Achievement:** The drone successfully completed the entire KRTI trajectory end-to-end (Takeoff -> Single Gates -> Triple Gate -> Red Drop Box -> Final Gates -> Precision Landing).
-- 🛠️ **Resolution:** The final "Deadlock" issue (where the drone hovered indefinitely at point-blank range) was resolved by forcing `fwd_cmd = 0.8` at `Area > 100000`, prioritizing momentum over centering at critical proximity.
-
-> [!WARNING]
-> **Sorry for the spaghetti code!** 🍝
-> `autopilot.py` is currently a 900+ line monolithic `if-elif` ladder. It is actively a work in progress. We are officially entering the **"Make it Right, Make it Fast"** phase to refactor this into clean, modular state machines!
+- 🛠️ **Resolution:** The legacy monolithic `if-elif` code was entirely refactored into a modular OOP State Machine. Deep architectural bugs, including the "Triple Gate Internal Wall Shrinkage" illusion and the "Infinite Reverse Kebablasan" bug, were successfully patched using persistent GPS/Lidar memory buffering.
