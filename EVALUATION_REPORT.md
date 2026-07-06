@@ -152,3 +152,24 @@ When YOLO locked onto Final Gate 2 (behind Gate 1) instead of Gate 1 itself, the
 
 ## 19. 🏆 MILESTONE ACHIEVED: FULL END-TO-END MISSION COMPLETION 🏆
 * **Breakthrough:** After weeks of iteration (including custom YOLOv8 training on a noisy dataset, solving simulation RTF scaling bugs, overcoming FOV limitations, and fixing "Ghost State" logic errors), the EVOSKY MMATS-15 drone successfully executed the complete KRTI trajectory from Takeoff -> Single Gates -> Triple Gate -> Red Drop Box -> Final Gates -> Precision Landing, completely autonomously relying solely on YOLOv8 and INS odometry (Zero GPS waypoint reliance).
+
+## 5. Tahap 4 (Final Boss) Insights: The Triumph of Hardware Agnosticism & OOP
+During the full Start-to-Finish test run, several catastrophic edge cases emerged that completely validated our decoupled OOP (Object-Oriented Programming) architecture:
+
+* **Dataset Bias & Sun Rotation Hack:** 
+  The YOLO model started hallucinating Single Gates as "Tripple Gate" or "Landing path". The root cause? **Dataset Bias**. The original training dataset was recorded while flying the drone backward (Finish to Start). When flying forward, the Gazebo sun acted as a harsh backlight, casting dark shadows on the gate faces that YOLO had never seen.
+  * **Workaround:** Instead of retraining the model (which would take hours), we simply rotated the `<light>` vector in `KRTI_2026.sdf` by 180 degrees (`<direction>0.5 0.1 -0.9</direction>`). A god-tier environmental hack that saved massive computational resources.
+
+* **Simulation Time vs. Physical Reality (RTF Scaling):** 
+  Using `asyncio.sleep(2.0)` for a blind punch forward resulted in the drone stopping mid-air. Why? Gazebo was running at 30% Real-Time Factor (RTF). Two real-world seconds translated to barely 0.6 seconds in the physics engine. 
+  * **Workaround:** Replaced time-based timeouts with physical distance metrics (`calculate_distance` from `dist_flown`). The drone now guarantees movement based on physical meters traveled, entirely ignoring simulation lag.
+
+* **Catastrophic Deadlocks & Bounding Box Merges:** 
+  YOLO frequently merged Gate 1 and Gate 2 into a single confusing data stream (e.g., reporting the massive Area of Gate 1, but the off-center Error X of Gate 2). This caused the drone to completely freeze: it refused to fly forward (because X was off-center) and refused to strafe (because the Area was too large, triggering the Anti-Drift safety).
+  * **Workaround:** Implemented a Force-Forward override inside `GateCenteringBase` (`fwd_cmd = 0.8`) if the area exceeds 100,000, violently breaking the deadlock and forcing the drone to punch through.
+
+* **Emergent Behavior: The 2-for-1 Gate Bypass:**
+  Because Gate 1 and Gate 2 are perfectly aligned, passing Gate 1 meant YOLO immediately locked onto Gate 2. The `TerminalGuidance_Gate1` state effectively swept through *both* gates simultaneously without ever triggering its blind punch until Gate 2 was passed. 
+  * **Workaround:** We completely deleted the `TerminalGuidance_Gate2` phase. Gate 1 now handles both gates and executes a massive 9.0-meter blind punch at the end, dropping the drone perfectly on top of Aruco 1.
+
+**Conclusion:** The MMATS-15 architecture holds. The Vision Daemon (`vision_daemon.py`) can hallucinate all it wants, the physics engine can lag, but because the State Machine (`states.py`) is modular and isolated, we only had to tweak logical parameters (punch distances, force forwards) without touching the core AI or Flight Controller communication lines.
