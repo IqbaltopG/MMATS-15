@@ -6,7 +6,7 @@ from utils import clamp, calculate_distance, get_stutter_creep_speed
 
 class MissionContext:
     def __init__(self):
-        self.state_phase = "CENTERING_GATE_1"
+        self.state_phase = "BLIND_PUNCH_TAKEOFF"
         self.timeout_counter = 0
         self.has_seen_target = False
         self.last_front_err_x = 0
@@ -25,6 +25,22 @@ class MissionContext:
 class BaseState:
     async def execute(self, drone, ctx):
         pass
+
+class BlindPunch_Takeoff(BaseState):
+    async def execute(self, drone, ctx):
+        if ctx.timeout_counter == 0:
+            ctx.blind_start_x = state.x
+            ctx.blind_start_y = state.y
+            ctx.timeout_counter = 1
+            print("[AUTOPILOT] Blind punch maju 2 meter buat ngebantu pandangan YOLO (Anti-RTF)...")
+            
+        ctx.dist_flown = calculate_distance(ctx.blind_start_x, ctx.blind_start_y, state.x, state.y)
+        
+        if ctx.dist_flown > 2.0:
+            ctx.timeout_counter = 0
+            ctx.state_phase = "CENTERING_GATE_1"
+        else:
+            await flight.send_body_velocity(drone, forward_m_s=1.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
 
 class GateCenteringBase(BaseState):
     def __init__(self, next_phase):
@@ -1222,6 +1238,7 @@ class TerminalDescent_Landing(BaseState):
 
 
 STATE_REGISTRY = {
+    "BLIND_PUNCH_TAKEOFF": BlindPunch_Takeoff(),
     "CENTERING_GATE_1": TerminalGuidance_Gate1(),
     "CENTERING_GATE_2": TerminalGuidance_Gate2(),
     "CENTERING_FINAL_GATE": TerminalGuidance_FinalGate(),

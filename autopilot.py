@@ -41,6 +41,7 @@ async def run_mission():
     await flight.send_body_velocity(drone, 0.0, 0.0, 0.0, 0.0)
     await asyncio.sleep(5)
 
+
     from states import STATE_REGISTRY, MissionContext
 
     # MMATS-15 STATE MACHINE (OOP)
