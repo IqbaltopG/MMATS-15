@@ -1,6 +1,7 @@
 import asyncio
 import json
 import math
+from utils import clamp, calculate_distance, get_stutter_creep_speed
 from mavsdk import System
 import flight
 from flight import get_distance_sensor_stream
@@ -107,7 +108,7 @@ async def run_mission():
 
         # Active Altitude Hold for 1.5m Operating Height
         z_err_15 = -1.5 - DRONE_Z
-        global_climb_cmd = max(-0.5, min(0.5, z_err_15 * 0.5))
+        global_climb_cmd = clamp(z_err_15 * 0.5, -0.5, 0.5)
 
         # ---------------------------------------------------------
         # PHASE 2: CENTERING_GATE_1 (Maju nembus gawang pertama)
@@ -125,13 +126,13 @@ async def run_mission():
                     fwd_cmd = 0.8
                     strafe_cmd = front_err_x * kp_yaw
                     z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
+                    up_cmd = clamp(z_err * 0.5, -0.5, 0.5) # Active Z=0.8m Lock
                 else:
                     if not altitude_locked:
                         # Belum nge-lock, kita hover dan presisi-kan
                         strafe_cmd = front_err_x * kp_yaw
                         up_cmd = (front_err_y + 150) * kp_up
-                        up_cmd = max(-0.6, min(0.6, up_cmd))
+                        up_cmd = clamp(up_cmd, -0.6, 0.6)
                         fwd_cmd = 0.0 # Berhenti maju buat nunggu stabil (anti-banteng)
                         
                         # Tolerance dilebarkan sedikit (30 pixel) biar ga nyangkut infinite loop
@@ -142,7 +143,7 @@ async def run_mission():
                         # UDAH LOCK! Bodo amat sama error Y (Karna kalau maju drone nunduk dan bikin ilusi error Y)
                         z_err = -0.8 - DRONE_Z
 
-                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
+                        up_cmd = clamp(z_err * 0.5, -0.5, 0.5) # Active Z=0.8m Lock
                         strafe_cmd = front_err_x * kp_yaw
                         if abs(front_err_x) > 40:
                             fwd_cmd = 0.0 # Kalo melenceng X-nya aja baru ngerem
@@ -175,7 +176,7 @@ async def run_mission():
                     await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
                 elif dist_flown < 3.2: # PUNCH THROUGH INS
                     z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                     
                     if timeout_counter % 10 == 0:
                         print(f"[AUTOPILOT] [GATE 1] Punching blind! INS Jarak: {dist_flown:.2f}/3.2m, Z: {up_cmd:.2f}")
@@ -199,7 +200,7 @@ async def run_mission():
             else:
                 # Kembali ke ketinggian 1.5m (DRONE_Z = -1.5)
                 z_err = -1.5 - DRONE_Z
-                climb_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                climb_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                 
                 if front_status == "LOCKED" and front_class == "Aruco Area":
                     blind_start_x = DRONE_X
@@ -245,8 +246,8 @@ async def run_mission():
                 strafe_cmd = down_err_x * 0.0015
                 
                 # Limit speed so it doesn't overshoot without gimbal
-                fwd_cmd = max(-0.2, min(0.2, fwd_cmd))
-                strafe_cmd = max(-0.2, min(0.2, strafe_cmd))
+                fwd_cmd = clamp(fwd_cmd, -0.2, 0.2)
+                strafe_cmd = clamp(strafe_cmd, -0.2, 0.2)
                 
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.0, yaw_deg_s=0.0)
                 
@@ -273,8 +274,8 @@ async def run_mission():
                     blind_start_y = DRONE_Y
                 elif has_seen_target:
                     # FALLBACK MEMORY: Rebound brake
-                    fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
-                    strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
+                    fwd_cmd = clamp(-last_down_err_y * 0.0015, -0.2, 0.2)
+                    strafe_cmd = clamp(last_down_err_x * 0.0015, -0.2, 0.2)
                     await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
@@ -374,8 +375,8 @@ async def run_mission():
                 fwd_cmd = -down_err_y * 0.0015
                 strafe_cmd = down_err_x * 0.0015
                 
-                fwd_cmd = max(-0.2, min(0.2, fwd_cmd))
-                strafe_cmd = max(-0.2, min(0.2, strafe_cmd))
+                fwd_cmd = clamp(fwd_cmd, -0.2, 0.2)
+                strafe_cmd = clamp(strafe_cmd, -0.2, 0.2)
                 
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 
@@ -402,8 +403,8 @@ async def run_mission():
                     blind_start_y = DRONE_Y
                 elif has_seen_target:
                     # FALLBACK MEMORY: Rebound brake
-                    fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
-                    strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
+                    fwd_cmd = clamp(-last_down_err_y * 0.0015, -0.2, 0.2)
+                    strafe_cmd = clamp(last_down_err_x * 0.0015, -0.2, 0.2)
                     await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
                 else:
                     await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
@@ -433,7 +434,7 @@ async def run_mission():
                 if front_area < 12000:
                     fwd_cmd = 0.8
                     z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                 else:
                     if abs(front_err_x) > 40:
                         fwd_cmd = 0.0
@@ -441,7 +442,7 @@ async def run_mission():
                     else:
                         fwd_cmd = 0.8
                         z_err = -0.8 - DRONE_Z
-                        up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                        up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                     
                 print(f"[AUTOPILOT] [TRIPLE GATE 1] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Yaw: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
@@ -458,7 +459,7 @@ async def run_mission():
                 
                 # Hover in place while rotating to find the gate
                 mem_yaw = last_front_err_x * kp_yaw
-                mem_yaw = max(-15.0, min(15.0, mem_yaw))
+                mem_yaw = clamp(mem_yaw, -15.0, 15.0)
                 await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
 
         elif state_phase == "PUNCH_TRIPLE_GATE_1":
@@ -468,7 +469,7 @@ async def run_mission():
                 if LIDAR_LEFT_DIST < 4.9 or LIDAR_RIGHT_DIST < 4.9:
                     strafe_cmd = (LIDAR_RIGHT_DIST - LIDAR_LEFT_DIST) * 0.05
                 z_err = -0.8 - DRONE_Z
-                up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                 
                 print(f"[AUTOPILOT] [TRIPLE GATE 1] Blind Punch INS! Jarak: {dist_flown:.2f}/3.8m, Lidar: {strafe_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
@@ -490,7 +491,7 @@ async def run_mission():
             else:
                 # P-Controller untuk CLIMB ke -1.5 meter secara instan setelah keluar lorong
                 z_err = -1.5 - DRONE_Z
-                climb_cmd = max(-0.8, min(0.5, z_err * 0.8)) # Agresif naik
+                climb_cmd = clamp(z_err * 0.8, -0.8, 0.5) # Agresif naik
 
                 # Rule 4: Flat Object Camera Handoff
                 # Kalo drop box kelihatan di kamera depan, steer ke sana
@@ -539,12 +540,12 @@ async def run_mission():
                 strafe_cmd = down_err_x * 0.0015
                 
                 # Limit speed so it brakes instead of overshooting
-                fwd_cmd = max(-0.2, min(0.2, fwd_cmd))
-                strafe_cmd = max(-0.2, min(0.2, strafe_cmd))
+                fwd_cmd = clamp(fwd_cmd, -0.2, 0.2)
+                strafe_cmd = clamp(strafe_cmd, -0.2, 0.2)
                 
                 # Z dijaga ketat di -1.5
                 z_err = -1.5 - DRONE_Z
-                up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                 
                 print(f"[AUTOPILOT] [DROP BOX] Centering (X:{down_err_x}, Y:{down_err_y}). Fwd:{fwd_cmd:.2f}, Strafe:{strafe_cmd:.2f}, Z:{up_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
@@ -571,10 +572,10 @@ async def run_mission():
                     blind_start_y = DRONE_Y
                 elif has_seen_target:
                     # FALLBACK MEMORY DOWN CAMERA: Terbang balik ke kordinat terakhir kali keliatan!
-                    fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
-                    strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
+                    fwd_cmd = clamp(-last_down_err_y * 0.0015, -0.2, 0.2)
+                    strafe_cmd = clamp(last_down_err_x * 0.0015, -0.2, 0.2)
                     z_err = -1.5 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                     print(f"[AUTOPILOT] Drop Box Flicker! Terbang balik pake memori kamera bawah... Fwd: {fwd_cmd:.2f}")
                     await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
@@ -605,7 +606,7 @@ async def run_mission():
                 if front_area < 12000:
                     fwd_cmd = 0.8
                     z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                 else:
                     if abs(front_err_x) > 40:
                         fwd_cmd = 0.0
@@ -613,7 +614,7 @@ async def run_mission():
                     else:
                         fwd_cmd = 0.8
                         z_err = -0.8 - DRONE_Z
-                        up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                        up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                         
                 print(f"[AUTOPILOT] [TRIPLE GATE 2] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Yaw: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
@@ -629,7 +630,7 @@ async def run_mission():
                         print(f"[AUTOPILOT] Triple Gate 2 hilang dari jauh (Area: {last_front_area}). Fallback Hover & Yaw!")
                 
                 mem_yaw = last_front_err_x * kp_yaw
-                mem_yaw = max(-15.0, min(15.0, mem_yaw))
+                mem_yaw = clamp(mem_yaw, -15.0, 15.0)
                 await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
 
         elif state_phase == "PUNCH_TRIPLE_GATE_2":
@@ -639,7 +640,7 @@ async def run_mission():
                 if LIDAR_LEFT_DIST < 4.9 or LIDAR_RIGHT_DIST < 4.9:
                     strafe_cmd = (LIDAR_RIGHT_DIST - LIDAR_LEFT_DIST) * 0.05
                 z_err = -0.8 - DRONE_Z
-                up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                 
                 print(f"[AUTOPILOT] [TRIPLE GATE 2] Blind Punch INS! Jarak: {dist_flown:.2f}/3.8m, Lidar: {strafe_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
@@ -660,7 +661,7 @@ async def run_mission():
                 has_seen_target = False
             else:
                 z_err = -1.5 - DRONE_Z
-                climb_cmd = max(-0.8, min(0.5, z_err * 0.8))
+                climb_cmd = clamp(z_err * 0.8, -0.8, 0.5)
                 
                 if front_status == "LOCKED" and front_class in ["Aruco", "Aruco Area"]:
                     blind_start_x = DRONE_X
@@ -700,10 +701,10 @@ async def run_mission():
                 
                 fwd_cmd = -down_err_y * 0.0015
                 strafe_cmd = down_err_x * 0.0015
-                fwd_cmd = max(-0.2, min(0.2, fwd_cmd))
-                strafe_cmd = max(-0.2, min(0.2, strafe_cmd))
+                fwd_cmd = clamp(fwd_cmd, -0.2, 0.2)
+                strafe_cmd = clamp(strafe_cmd, -0.2, 0.2)
                 z_err = -1.5 - DRONE_Z
-                up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                 
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
                 
@@ -726,10 +727,10 @@ async def run_mission():
                     blind_start_x = DRONE_X
                     blind_start_y = DRONE_Y
                 elif has_seen_target:
-                    fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
-                    strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
+                    fwd_cmd = clamp(-last_down_err_y * 0.0015, -0.2, 0.2)
+                    strafe_cmd = clamp(last_down_err_x * 0.0015, -0.2, 0.2)
                     z_err = -1.5 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                     await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
 
         # ---------------------------------------------------------
@@ -782,22 +783,22 @@ async def run_mission():
                 if front_area < 25000:
                     fwd_cmd = 0.8
                     strafe_cmd = front_err_x * kp_yaw
-                    strafe_cmd = max(-0.15, min(0.15, strafe_cmd)) # ANTI-DRIFT: Clamp ketat
+                    strafe_cmd = clamp(strafe_cmd, -0.15, 0.15) # ANTI-DRIFT: Clamp ketat
                     yaw_cmd = front_err_x * 0.08 # Rotasi pelan ke target
-                    yaw_cmd = max(-10.0, min(10.0, yaw_cmd))
+                    yaw_cmd = clamp(yaw_cmd, -10.0, 10.0)
                     
                     z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
+                    up_cmd = clamp(z_err * 0.5, -0.5, 0.5) # Active Z=0.8m Lock
                 else:
                     if not altitude_locked:
                         strafe_cmd = front_err_x * kp_yaw
-                        strafe_cmd = max(-0.15, min(0.15, strafe_cmd))
+                        strafe_cmd = clamp(strafe_cmd, -0.15, 0.15)
                         yaw_cmd = front_err_x * 0.08
-                        yaw_cmd = max(-10.0, min(10.0, yaw_cmd))
+                        yaw_cmd = clamp(yaw_cmd, -10.0, 10.0)
                         
                         # Turun ke bawah top bar
                         up_cmd = (front_err_y + 150) * kp_up
-                        up_cmd = max(-0.6, min(0.6, up_cmd))
+                        up_cmd = clamp(up_cmd, -0.6, 0.6)
                         fwd_cmd = 0.0
                         
                         if abs(front_err_x) < 30 and abs(front_err_y + 150) < 30:
@@ -805,12 +806,12 @@ async def run_mission():
                             print("[AUTOPILOT] [FINAL GATE 1] Centered! ALTITUDE LOCKED. Going Pitbull...")
                     else:
                         z_err = -0.8 - DRONE_Z
-                        up_cmd = max(-0.5, min(0.5, z_err * 0.5)) # Active Z=0.8m Lock
+                        up_cmd = clamp(z_err * 0.5, -0.5, 0.5) # Active Z=0.8m Lock
                         
                         strafe_cmd = front_err_x * kp_yaw
-                        strafe_cmd = max(-0.15, min(0.15, strafe_cmd)) # ANTI-DRIFT: Clamp ketat
+                        strafe_cmd = clamp(strafe_cmd, -0.15, 0.15) # ANTI-DRIFT: Clamp ketat
                         yaw_cmd = front_err_x * 0.08
-                        yaw_cmd = max(-10.0, min(10.0, yaw_cmd))
+                        yaw_cmd = clamp(yaw_cmd, -10.0, 10.0)
                         
                         if abs(front_err_x) > 40:
                             fwd_cmd = 0.0
@@ -840,11 +841,11 @@ async def run_mission():
                 if timeout_counter == 0:
                     # FALLBACK MEMORY: Hover in place while rotating to find the gate!
                     mem_yaw = last_front_err_x * kp_yaw
-                    mem_yaw = max(-15.0, min(15.0, mem_yaw))
+                    mem_yaw = clamp(mem_yaw, -15.0, 15.0)
                     await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
                 elif dist_flown < 8.0: # PUNCH THROUGH INS KEDUA GAWANG SEKALIGUS
                     z_err = -0.8 - DRONE_Z
-                    up_cmd = max(-0.5, min(0.5, z_err * 0.5))
+                    up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                     print(f"[AUTOPILOT] [FINAL GATE PUNCH] Jarak Tempuh INS: {dist_flown:.2f}m / 8.0m")
                     await flight.send_body_velocity(drone, forward_m_s=1.2, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
                 else:
@@ -865,7 +866,7 @@ async def run_mission():
             else:
                 # P-Controller CLIMB ke -1.5m setelah punch through Final Gate 2
                 z_err = -1.5 - DRONE_Z
-                climb_cmd = max(-0.8, min(0.5, z_err * 0.8))
+                climb_cmd = clamp(z_err * 0.8, -0.8, 0.5)
                 
                 # Rule 4: Handoff Kamera
                 if front_status == "LOCKED" and front_class in ["Landing path", "Aruco"]:
@@ -912,8 +913,8 @@ async def run_mission():
                 strafe_cmd = down_err_x * 0.0015
                 
                 # Limit speed so it brakes gently instead of overshooting
-                fwd_cmd = max(-0.2, min(0.2, fwd_cmd))
-                strafe_cmd = max(-0.2, min(0.2, strafe_cmd))
+                fwd_cmd = clamp(fwd_cmd, -0.2, 0.2)
+                strafe_cmd = clamp(strafe_cmd, -0.2, 0.2)
                 
                 print(f"[AUTOPILOT] [LANDING] Fwd: {fwd_cmd:.2f}, Strafe: {strafe_cmd:.2f}, Stable: {landing_ticks}/30, Z: {DRONE_Z:.2f}")
                 # Turun pelan-pelan (0.3 m/s) sambil centering
@@ -952,8 +953,8 @@ async def run_mission():
                     blind_start_y = DRONE_Y
                 elif has_seen_target:
                     # FALLBACK MEMORY DOWN CAMERA
-                    fwd_cmd = max(-0.2, min(0.2, -last_down_err_y * 0.0015))
-                    strafe_cmd = max(-0.2, min(0.2, last_down_err_x * 0.0015))
+                    fwd_cmd = clamp(-last_down_err_y * 0.0015, -0.2, 0.2)
+                    strafe_cmd = clamp(last_down_err_x * 0.0015, -0.2, 0.2)
                     print(f"[AUTOPILOT] Landing Pad Flicker! Terbang balik pake memori... Fwd: {fwd_cmd:.2f}, Z: {DRONE_Z:.2f}")
                     await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=0.3, yaw_deg_s=0.0)
                 else:
