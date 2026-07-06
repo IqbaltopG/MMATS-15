@@ -7,6 +7,18 @@ import flight
 from flight import get_distance_sensor_stream
 from comms import state, telemetry_task, start_udp_server
 
+
+async def kill_switch_task(drone):
+    from mavsdk.telemetry import FlightMode
+    is_offboard = False
+    async for flight_mode in drone.telemetry.flight_mode():
+        if flight_mode == FlightMode.OFFBOARD:
+            is_offboard = True
+        elif is_offboard and flight_mode != FlightMode.OFFBOARD:
+            print("[KILL SWITCH] MANUAL OVERRIDE DETECTED! (Flight Mode changed from OFFBOARD). Exiting Autopilot...")
+            import os
+            os._exit(0)
+
 async def run_mission():
     drone = System()
     print("[AUTOPILOT] Menyambung ke Drone (SITL)...")
@@ -19,6 +31,8 @@ async def run_mission():
     
     print("[AUTOPILOT] Starting Telemetry Task...")
     asyncio.create_task(telemetry_task(drone))
+    print("[AUTOPILOT] Starting Kill Switch Task (Flight Mode Listener)...")
+    asyncio.create_task(kill_switch_task(drone))
 
     print("[AUTOPILOT] Memulai Smart Takeoff...")
     await flight.arm_and_takeoff(drone, altitude_m=1.5)
