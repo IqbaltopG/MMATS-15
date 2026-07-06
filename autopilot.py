@@ -5,8 +5,7 @@ from utils import clamp, calculate_distance, get_stutter_creep_speed
 from mavsdk import System
 import flight
 from flight import get_distance_sensor_stream
-from comms import state, telemetry_task, start_udp_server
-
+from comms import state, telemetry_task, attitude_task, start_udp_server
 
 async def kill_switch_task(drone):
     from mavsdk.telemetry import FlightMode
@@ -31,6 +30,7 @@ async def run_mission():
     
     print("[AUTOPILOT] Starting Telemetry Task...")
     asyncio.create_task(telemetry_task(drone))
+    asyncio.create_task(attitude_task(drone))
     print("[AUTOPILOT] Starting Kill Switch Task (Flight Mode Listener)...")
     asyncio.create_task(kill_switch_task(drone))
 

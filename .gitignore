@@ -28,3 +28,4 @@ dataset/
 *.pt
 .agents/
 evaluation.md
+EVALUATION_REPORT.md

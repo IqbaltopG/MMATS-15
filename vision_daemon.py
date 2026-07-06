@@ -66,7 +66,8 @@ def start_vision_daemon():
             if len(results) > 0 and len(results[0].boxes) > 0:
                 boxes = results[0].boxes
                 best_box = None
-                max_area = -1
+                min_err_x = float('inf')
+                max_area = 0
                 
                 for box in boxes:
                     bx1, by1, bx2, by2 = box.xyxy[0].cpu().numpy()
@@ -77,10 +78,15 @@ def start_vision_daemon():
                     bx2 = max(0.0, min(float(width), float(bx2)))
                     by2 = max(0.0, min(float(height), float(by2)))
                     
-                    b_area = (bx2 - bx1) * (by2 - by1)
-                    if b_area > max_area:
-                        max_area = b_area
+                    # Cek seberapa tengah object ini di layar
+                    centroid_x = (bx1 + bx2) / 2
+                    err_x = abs(centroid_x - frame_center_x)
+                    
+                    # PILIH TARGET PALING TENGAH (Bukan Paling Gede)
+                    if err_x < min_err_x:
+                        min_err_x = err_x
                         best_box = box
+                        max_area = (bx2 - bx1) * (by2 - by1)
                 
                 # Gunakan koordinat box terbaik (juga di-clamp)
                 x1, y1, x2, y2 = best_box.xyxy[0].cpu().numpy()

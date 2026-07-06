@@ -32,19 +32,20 @@ class BlindPunch_Takeoff(BaseState):
             ctx.blind_start_x = state.x
             ctx.blind_start_y = state.y
             ctx.timeout_counter = 1
-            print("[AUTOPILOT] Blind punch maju 2 meter buat ngebantu pandangan YOLO (Anti-RTF)...")
+            print("[AUTOPILOT] Blind punch maju 5 meter buat ngebantu pandangan YOLO (Anti-RTF)...")
             
         ctx.dist_flown = calculate_distance(ctx.blind_start_x, ctx.blind_start_y, state.x, state.y)
         
-        if ctx.dist_flown > 2.0:
+        if ctx.dist_flown > 5.0:
             ctx.timeout_counter = 0
             ctx.state_phase = "CENTERING_GATE_1"
         else:
             await flight.send_body_velocity(drone, forward_m_s=1.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
 
 class GateCenteringBase(BaseState):
-    def __init__(self, next_phase):
+    def __init__(self, next_phase, punch_dist=3.2):
         self.next_phase = next_phase
+        self.punch_dist = punch_dist
     async def execute(self, drone, ctx):
         front_status = state.target_front.get("status", "LOST")
         front_class = state.target_front.get("class", "none")
@@ -107,6 +108,7 @@ class GateCenteringBase(BaseState):
                     # jangan ngelakuin micro-correction nyamping karena pixel error-nya nggak akurat
                     if front_area > 100000:
                         strafe_cmd = 0.0
+                        fwd_cmd = 0.8 # FORCE MAJU! Jangan ngerem gara-gara err_x > 40
                     
                 print(f"[AUTOPILOT] [GATE] Centering (Area: {front_area}). Strafe: {strafe_cmd:.2f}, Z: {up_cmd:.2f}, Lock: {ctx.altitude_locked}")
 
@@ -120,25 +122,30 @@ class GateCenteringBase(BaseState):
                         ctx.blind_start_y = state.y
                     ctx.timeout_counter += 1
                 else:
-                    print(f"[AUTOPILOT] Gawang 1 hilang dari jauh (Area: {ctx.last_front_area}, ErrX: {ctx.last_front_err_x}). Hovering...")
+                    print(f"[AUTOPILOT] Gawang hilang dari jauh (Area: {ctx.last_front_area}, ErrX: {ctx.last_front_err_x}). Hovering & Climbing to 1.5m...")
                     ctx.timeout_counter = 0
             
             ctx.dist_flown = math.sqrt((state.x - ctx.blind_start_x)**2 + (state.y - ctx.blind_start_y)**2) if ctx.timeout_counter > 0 else 0
             
             if ctx.timeout_counter == 0:
-                await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
-            elif ctx.dist_flown < 3.2: # PUNCH THROUGH INS
+                # Force drone to climb back to 1.5m while waiting for YOLO!
+                z_err = -1.5 - state.z
+                up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
+                fwd_creep = 0.4 if not getattr(ctx, 'has_seen_target', False) else 0.0
+                await flight.send_body_velocity(drone, forward_m_s=fwd_creep, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
+            elif ctx.dist_flown < self.punch_dist: # PUNCH THROUGH INS
                 z_err = -0.8 - state.z
                 up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                 
                 if ctx.timeout_counter % 10 == 0:
-                    print(f"[AUTOPILOT] [GATE] Punching blind! INS Jarak: {ctx.dist_flown:.2f}/3.2m, Z: {up_cmd:.2f}")
+                    print(f"[AUTOPILOT] [GATE] Punching blind! INS Jarak: {ctx.dist_flown:.2f}/{self.punch_dist:.1f}m, Z: {up_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=0.0)
             else:
-                print(f"[AUTOPILOT] Lolos Gate 1 (Jarak INS: {ctx.dist_flown:.2f}m)! Mencari Aruco 1...")
+                print(f"[AUTOPILOT] Lolos Gate (Jarak INS: {ctx.dist_flown:.2f}m)! Transisi ke Phase selanjutnya...")
                 ctx.state_phase = self.next_phase
                 ctx.timeout_counter = 0
                 ctx.has_seen_target = False
+                ctx.altitude_locked = False
 
 
     # ---------------------------------------------------------
@@ -148,15 +155,15 @@ class GateCenteringBase(BaseState):
 
 class TerminalGuidance_Gate1(GateCenteringBase):
     def __init__(self):
-        super().__init__("CENTERING_GATE_2")
+        super().__init__("FIND_ARUCO_1", punch_dist=9.0)
 
 class TerminalGuidance_Gate2(GateCenteringBase):
     def __init__(self):
-        super().__init__("FIND_ARUCO_1")
+        super().__init__("FIND_ARUCO_1", punch_dist=9.0)
 
 class TerminalGuidance_FinalGate(GateCenteringBase):
     def __init__(self):
-        super().__init__("FIND_LANDING_PAD")
+        super().__init__("FIND_LANDING_PAD", punch_dist=3.2)
 
 class AcquireTarget_Aruco1(BaseState):
     async def execute(self, drone, ctx):
@@ -179,10 +186,9 @@ class AcquireTarget_Aruco1(BaseState):
         global_climb_cmd = clamp(z_err_15 * 0.5, -0.5, 0.5)
 
         # ---------------------------------------------------------
-        # PHASE 2: CENTERING_GATE_1 (Maju nembus gawang pertama)
         # ---------------------------------------------------------
-        if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
-            print("[AUTOPILOT] Aruco 1 (Marker/Area) Terlihat di Kamera Bawah! Memulai Precision Centering...")
+        if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area", "Tripple Gate"]:
+            print("[AUTOPILOT] Aruco 1 (Marker/Area/Halusinasi Tripple) Terlihat di Kamera Bawah! Memulai Precision Centering...")
             ctx.state_phase = "CENTER_ARUCO_1"
             ctx.timeout_counter = 0
             ctx.has_seen_target = False
@@ -247,9 +253,10 @@ class TerminalGuidance_Aruco1(BaseState):
         global_climb_cmd = clamp(z_err_15 * 0.5, -0.5, 0.5)
 
         # ---------------------------------------------------------
-        # PHASE 2: CENTERING_GATE_1 (Maju nembus gawang pertama)
-        # ---------------------------------------------------------
-        if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
+        # HACK: YOLO sering halusinasi ngira Aruco jadi Tripple Gate di kamera bawah.
+        # Karena Tripple Gate itu gawang vertikal, MUSTAHIL ada di lantai. 
+        # Jadi kalau YOLO liat Tripple Gate di kamera bawah, anggep aja itu Aruco!
+        if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area", "Tripple Gate"]:
             ctx.has_seen_target = True
             ctx.last_down_err_x = down_err_x
             ctx.last_down_err_y = down_err_y
@@ -270,7 +277,7 @@ class TerminalGuidance_Aruco1(BaseState):
                 completion_threshold = 50 if down_class == "Aruco" else 150
                 
                 if ctx.timeout_counter > completion_threshold: 
-                    print("[AUTOPILOT] Presisi WP1 Tercapai! Mengikuti Straight Line menuju WP2...")
+                    print("[AUTOPILOT] Presisi WP1 Tercapai! Muter kanan nyari Triple Gate 1 (Double Gate)...")
                     ctx.state_phase = "YAW_RIGHT_TRIPLE_2"
                     ctx.timeout_counter = 0
                     ctx.has_seen_target = False
@@ -282,10 +289,11 @@ class TerminalGuidance_Aruco1(BaseState):
                 print("[AUTOPILOT] WP1 Hilang! Kembali ke FIND_ARUCO_1...")
                 ctx.state_phase = "FIND_ARUCO_1"
                 ctx.timeout_counter = 0
+                ctx.has_seen_target = False
                 ctx.blind_start_x = state.x
                 ctx.blind_start_y = state.y
             elif ctx.has_seen_target:
-                # FALLBACK MEMORY: Rebound brake
+                # FALLBACK MEMORY: Teruskan terbang ke memori koordinat terakhir pas lagi flicker
                 fwd_cmd = clamp(-ctx.last_down_err_y * 0.0015, -0.2, 0.2)
                 strafe_cmd = clamp(ctx.last_down_err_x * 0.0015, -0.2, 0.2)
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=global_climb_cmd, yaw_deg_s=0.0)
@@ -326,15 +334,23 @@ class FlyByWire_LineFollow(BaseState):
         # EARLY EXIT: Jika sudah melihat Aruco 2, langsung stop ikuti garis
         # ONLY early exit if we have seen the straight line first (meaning we left Aruco 1)
         if ctx.has_seen_target and down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
-            print("[AUTOPILOT] WP2 (Aruco 2) Terlihat di Bawah! Langsung Centering...")
-            ctx.state_phase = "CENTER_ARUCO_2"
+            if getattr(ctx, 'is_final_line', False):
+                print("[AUTOPILOT] WP3 (Aruco 3) Terlihat di Bawah! Langsung Centering...")
+                ctx.state_phase = "CENTER_ARUCO_3"
+            else:
+                print("[AUTOPILOT] WP2 (Aruco 2) Terlihat di Bawah! Langsung Centering...")
+                ctx.state_phase = "CENTER_ARUCO_2"
             ctx.timeout_counter = 0
             ctx.has_seen_target = False
             return # Skip the rest of the loop to enter new phase immediately
             
         elif ctx.has_seen_target and front_status == "LOCKED" and front_class == "Aruco Area":
-            print("[AUTOPILOT] Aruco 2 Terlihat di Depan! Beralih mencari Aruco 2...")
-            ctx.state_phase = "FIND_ARUCO_3"
+            if getattr(ctx, 'is_final_line', False):
+                print("[AUTOPILOT] WP3 (Aruco 3) Terlihat di Depan! Beralih mencari WP3...")
+                ctx.state_phase = "FIND_ARUCO_3"
+            else:
+                print("[AUTOPILOT] Aruco 2 Terlihat di Depan! Beralih mencari Aruco 2...")
+                ctx.state_phase = "FIND_ARUCO_2"
             ctx.timeout_counter = 0
             ctx.has_seen_target = False
             return
@@ -343,7 +359,8 @@ class FlyByWire_LineFollow(BaseState):
             yaw_cmd = front_err_x * ctx.kp_yaw
             
         if down_status == "LOCKED" and down_class == "Straight Line":
-            strafe_cmd = down_err_x * ctx.kp_yaw
+            strafe_cmd = down_err_x * 0.0015
+            strafe_cmd = clamp(strafe_cmd, -0.3, 0.3)
             ctx.timeout_counter = 0 # Reset timeout kalau masih liat garis
             ctx.has_seen_target = True # Tandai bahwa kita udah berhasil nangkep garis
         else:
@@ -351,8 +368,12 @@ class FlyByWire_LineFollow(BaseState):
                 ctx.timeout_counter += 1
             
         if ctx.timeout_counter > 150: # Garis hilang (RTF 30% scale)
-            print("[AUTOPILOT] Ujung Garis WP2 tercapai! Beralih mencari Aruco 2...")
-            ctx.state_phase = "FIND_ARUCO_2"
+            if getattr(ctx, 'is_final_line', False):
+                print("[AUTOPILOT] Ujung Garis Final tercapai! Beralih mencari WP3 (Aruco 3)...")
+                ctx.state_phase = "FIND_ARUCO_3"
+            else:
+                print("[AUTOPILOT] Ujung Garis WP2 tercapai! Beralih mencari Aruco 2...")
+                ctx.state_phase = "FIND_ARUCO_2"
             ctx.timeout_counter = 0
             ctx.has_seen_target = False
         
@@ -385,13 +406,13 @@ class AcquireTarget_Aruco2(BaseState):
         # ---------------------------------------------------------
         # PHASE 2: CENTERING_GATE_1 (Maju nembus gawang pertama)
         # ---------------------------------------------------------
-        if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
+        if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area", "Tripple Gate"]:
             print("[AUTOPILOT] WP2 (Aruco 2) Terlihat! Memulai Centering...")
             ctx.state_phase = "CENTER_ARUCO_2"
             ctx.timeout_counter = 0
             ctx.has_seen_target = False
         else:
-            if front_status == "LOCKED" and front_class == "Aruco Area":
+            if front_status == "LOCKED" and front_class in ["Aruco Area", "Tripple Gate"]:
                 ctx.blind_start_x = state.x
                 ctx.blind_start_y = state.y
                 ctx.has_seen_target = True
@@ -448,7 +469,7 @@ class TerminalGuidance_Aruco2(BaseState):
         # ---------------------------------------------------------
         # PHASE 2: CENTERING_GATE_1 (Maju nembus gawang pertama)
         # ---------------------------------------------------------
-        if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area"]:
+        if down_status == "LOCKED" and down_class in ["Aruco", "Aruco Area", "Tripple Gate"]:
             ctx.has_seen_target = True
             ctx.last_down_err_x = down_err_x
             ctx.last_down_err_y = down_err_y
@@ -468,8 +489,9 @@ class TerminalGuidance_Aruco2(BaseState):
                 completion_threshold = 50 if down_class == "Aruco" else 150
                 
                 if ctx.timeout_counter > completion_threshold:
-                    print("[AUTOPILOT] Presisi WP2 Tercapai! Mutar kiri nyari Triple Gate 1...")
-                    ctx.state_phase = "FOLLOW_LINE_TO_WP2"
+                    print("[AUTOPILOT] Presisi WP2 Tercapai! Mutar kanan nyari Straight Line Final...")
+                    ctx.state_phase = "YAW_RIGHT_FINAL_LINE"
+                    ctx.is_final_line = True
                     ctx.timeout_counter = 0
                     ctx.has_seen_target = False
             else:
@@ -482,6 +504,7 @@ class TerminalGuidance_Aruco2(BaseState):
                 ctx.timeout_counter = 0
                 ctx.blind_start_x = state.x
                 ctx.blind_start_y = state.y
+                ctx.has_seen_target = False
             elif ctx.has_seen_target:
                 # FALLBACK MEMORY: Rebound brake
                 fwd_cmd = clamp(-ctx.last_down_err_y * 0.0015, -0.2, 0.2)
@@ -493,6 +516,24 @@ class TerminalGuidance_Aruco2(BaseState):
     # ---------------------------------------------------------
     # PHASE 4C: YAW_LEFT_TRIPLE_1 (Belok Kiri Nyari Triple Gate)
     # ---------------------------------------------------------
+
+class ExecuteYawSweep_FinalLine(BaseState):
+    async def execute(self, drone, ctx):
+        front_status = state.target_front.get("status", "LOST")
+        front_class = state.target_front.get("class", "none")
+        down_status = state.target_down.get("status", "LOST")
+        down_class = state.target_down.get("class", "none")
+
+        z_err_15 = -1.5 - state.z
+        global_climb_cmd = clamp(z_err_15 * 0.5, -0.5, 0.5)
+
+        ctx.timeout_counter += 1
+        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=global_climb_cmd, yaw_deg_s=25.0)
+        
+        if (front_status == "LOCKED" and front_class == "Straight Line") or (down_status == "LOCKED" and down_class == "Straight Line"):
+            print(f"[AUTOPILOT] Straight Line Final terlihat! Memulai Line Follow...")
+            ctx.state_phase = "FOLLOW_LINE_TO_WP2"
+            ctx.timeout_counter = 0
 
 class ExecuteYawSweep_Left(BaseState):
     async def execute(self, drone, ctx):
@@ -553,39 +594,43 @@ class AcquireTarget_TripleGate1(BaseState):
         # ---------------------------------------------------------
         if front_status == "LOCKED" and front_class == "Tripple Gate":
             ctx.has_seen_target = True
+            ctx.max_front_area = max(getattr(ctx, 'max_front_area', 0), front_area)
             ctx.last_front_area = front_area
             ctx.last_front_err_y = front_err_y
             ctx.last_front_err_x = front_err_x
             yaw_cmd = front_err_x * ctx.kp_yaw
             
-            if front_area < 12000:
-                fwd_cmd = 0.8
+            if getattr(ctx, 'max_front_area', 0) < 350000:
+                if abs(front_err_x) > 100:
+                    fwd_cmd = 0.0 # Rem dulu biar ngadep lurus ke lubang!
+                else:
+                    fwd_cmd = 0.8
                 z_err = -0.8 - state.z
                 up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
             else:
-                if abs(front_err_x) > 40:
-                    fwd_cmd = 0.0
-                    up_cmd = (front_err_y + 20) * ctx.kp_up
-                else:
-                    fwd_cmd = 0.8
-                    z_err = -0.8 - state.z
-                    up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
+                yaw_cmd = 0.0 # ANTI-DRIFT: Jangan belok-belok di moncong lorong
+                fwd_cmd = 0.8 # FORCE MAJU, jangan ngerem
+                z_err = -0.8 - state.z
+                up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                 
-            print(f"[AUTOPILOT] [TRIPLE GATE 1] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Yaw: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
+            ctx.timeout_counter = 0
+            print(f"[AUTOPILOT] [TRIPLE GATE 2] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Yaw: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
             await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
         else:
             if ctx.has_seen_target:
-                if ctx.last_front_area > 10000 and abs(ctx.last_front_err_x) < 100:
-                    print("[AUTOPILOT] Memasuki Lorong Triple Gate 1! Berpindah ke PUNCH_TRIPLE_GATE_1")
-                    ctx.state_phase = "PUNCH_TRIPLE_GATE_1"
-                    ctx.blind_start_x = state.x
-                    ctx.blind_start_y = state.y
-                    return
-                else:
-                    print(f"[AUTOPILOT] Triple Gate 1 hilang dari jauh (Area: {ctx.last_front_area}). Fallback Hover & Yaw!")
+                ctx.timeout_counter += 1
+                if ctx.timeout_counter > 5:
+                    if getattr(ctx, 'max_front_area', 0) > 350000:
+                        print("[AUTOPILOT] Memasuki Lorong Triple Gate 2! Berpindah ke PUNCH_TRIPLE_GATE_1")
+                        ctx.state_phase = "PUNCH_TRIPLE_GATE_1"
+                        ctx.blind_start_x = state.x
+                        ctx.blind_start_y = state.y
+                        return
+                    else:
+                        print(f"[AUTOPILOT] Triple Gate 2 hilang dari jauh (Area: {ctx.last_front_area}). Fallback Hover & Yaw!")
             
             # Hover in place while rotating to find the gate
-            mem_yaw = ctx.last_front_err_x * ctx.kp_yaw
+            mem_yaw = getattr(ctx, 'last_front_err_x', 0) * ctx.kp_yaw
             mem_yaw = clamp(mem_yaw, -15.0, 15.0)
             await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
 
@@ -613,17 +658,17 @@ class DeadReckoning_TripleGate1(BaseState):
         # PHASE 2: CENTERING_GATE_1 (Maju nembus gawang pertama)
         # ---------------------------------------------------------
         ctx.dist_flown = math.sqrt((state.x - ctx.blind_start_x)**2 + (state.y - ctx.blind_start_y)**2)
-        if ctx.dist_flown < 3.8: # PUNCH THROUGH TUNNEL
+        if ctx.dist_flown < 7.0: # PUNCH THROUGH TUNNEL
             strafe_cmd = 0.0
             if state.lidar_left < 4.9 or state.lidar_right < 4.9:
                 strafe_cmd = (state.lidar_right - state.lidar_left) * 0.05
             z_err = -0.8 - state.z
             up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
             
-            print(f"[AUTOPILOT] [TRIPLE GATE 1] Blind Punch INS! Jarak: {ctx.dist_flown:.2f}/3.8m, Lidar: {strafe_cmd:.2f}")
+            print(f"[AUTOPILOT] [TRIPLE GATE 2] Blind Punch INS! Jarak: {ctx.dist_flown:.2f}/7.0m, Lidar: {strafe_cmd:.2f}")
             await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
         else:
-            print("[AUTOPILOT] Keluar dari Triple Gate 1! Nyari Red Box buat Drop...")
+            print("[AUTOPILOT] Lolos Triple Gate 2! Mencari WP2 (Aruco 2)...")
             ctx.state_phase = "FIND_ARUCO_2"
             ctx.has_seen_target = False
 
@@ -655,8 +700,8 @@ class AcquireTarget_DropBox(BaseState):
         # ---------------------------------------------------------
         # PHASE 2: CENTERING_GATE_1 (Maju nembus gawang pertama)
         # ---------------------------------------------------------
-        if down_status == "LOCKED" and down_class in ["Red Drop Box", "RedDrop Box"]:
-            print("[AUTOPILOT] Red Drop Box Terlihat di Kamera Bawah! AUTO-STOP & Memulai Centering...")
+        if down_status == "LOCKED" and down_class in ["Red Drop Box", "RedDrop Box", "Aruco", "Aruco Area"]:
+            print("[AUTOPILOT] Red Drop Box / Aruco Terlihat di Kamera Bawah! AUTO-STOP & Memulai Centering...")
             ctx.state_phase = "CENTER_DROPBOX"
             ctx.timeout_counter = 0
             ctx.has_seen_target = False
@@ -666,8 +711,8 @@ class AcquireTarget_DropBox(BaseState):
             climb_cmd = clamp(z_err * 0.8, -0.8, 0.5) # Agresif naik
 
             # Rule 4: Flat Object Camera Handoff
-            # Kalo drop box kelihatan di kamera depan, steer ke sana
-            if front_status == "LOCKED" and front_class in ["Red Drop Box", "RedDrop Box"]:
+            # Kalo drop box / aruco kelihatan di kamera depan, steer ke sana
+            if front_status == "LOCKED" and front_class in ["Red Drop Box", "RedDrop Box", "Aruco", "Aruco Area"]:
                 ctx.blind_start_x = state.x
                 ctx.blind_start_y = state.y
                 ctx.has_seen_target = True
@@ -684,12 +729,19 @@ class AcquireTarget_DropBox(BaseState):
                 ctx.dist_flown = math.sqrt((state.x - ctx.blind_start_x)**2 + (state.y - ctx.blind_start_y)**2)
                 ctx.timeout_counter += 1
                 
-                if ctx.dist_flown > 2.5:
+                if ctx.dist_flown > 2.5 and ctx.timeout_counter < 500:
                     ctx.timeout_counter = 500 # Latch reverse state
+                    ctx.reverse_start_x = state.x
+                    ctx.reverse_start_y = state.y
                     
                 if ctx.timeout_counter >= 500:
-                    print(f"[AUTOPILOT] Kebablasan Drop Box di blind spot! Terbang mundur...")
-                    await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    reverse_dist = math.sqrt((state.x - getattr(ctx, 'reverse_start_x', state.x))**2 + (state.y - getattr(ctx, 'reverse_start_y', state.y))**2)
+                    if reverse_dist > 2.0:
+                        print("[AUTOPILOT] Mundur kejauhan, Hover nunggu instruksi!")
+                        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    else:
+                        print(f"[AUTOPILOT] Kebablasan Drop Box di blind spot! Terbang mundur...")
+                        await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 else:
                     # Stutter creep to level pitch and scan straight down
                     fwd_creep = 0.3 if ctx.timeout_counter % 20 < 10 else 0.0
@@ -729,6 +781,8 @@ class TerminalGuidance_DropBox(BaseState):
             ctx.has_seen_target = True
             ctx.last_down_err_x = down_err_x
             ctx.last_down_err_y = down_err_y
+            ctx.last_seen_x = state.x
+            ctx.last_seen_y = state.y
             
             # Active Auto-Stop Braking (Gentle for Gimbal-less)
             fwd_cmd = -down_err_y * 0.0015
@@ -746,10 +800,10 @@ class TerminalGuidance_DropBox(BaseState):
             await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
             
             if abs(down_err_x) < 20 and abs(down_err_y) < 20:
-                if down_class in ["Red Drop Box", "RedDrop Box"]:
+                if down_class in ["Red Drop Box", "RedDrop Box", "Aruco", "Aruco Area"]:
                     ctx.timeout_counter += 1
                     if ctx.timeout_counter > 100:
-                        print("[AUTOPILOT] Medkit Dropped. Yaw Kanan nyari Triple Gate 2...")
+                        print("[AUTOPILOT] Medkit Dropped. Yaw Kanan nyari Triple Gate 1...")
                         ctx.state_phase = "YAW_LEFT_TRIPLE_1"
                         ctx.timeout_counter = 0
                         ctx.has_seen_target = False
@@ -765,19 +819,31 @@ class TerminalGuidance_DropBox(BaseState):
                 ctx.timeout_counter = 0
                 ctx.blind_start_x = state.x
                 ctx.blind_start_y = state.y
+                ctx.has_seen_target = False # Bener-bener ilang, riset state!
             elif ctx.has_seen_target:
-                # FALLBACK MEMORY DOWN CAMERA: Terbang balik ke kordinat terakhir kali keliatan!
-                fwd_cmd = clamp(-ctx.last_down_err_y * 0.0015, -0.2, 0.2)
-                strafe_cmd = clamp(ctx.last_down_err_x * 0.0015, -0.2, 0.2)
+                # FALLBACK MEMORY DOWN CAMERA: Terbang balik ke kordinat GPS terakhir!
+                dx = getattr(ctx, 'last_seen_x', state.x) - state.x
+                dy = getattr(ctx, 'last_seen_y', state.y) - state.y
+                
+                yaw_rad = math.radians(state.yaw)
+                cos_y = math.cos(yaw_rad)
+                sin_y = math.sin(yaw_rad)
+                
+                # Convert global error to body frame velocity
+                fwd_err = dx * cos_y + dy * sin_y
+                right_err = -dx * sin_y + dy * cos_y
+                
+                fwd_cmd = clamp(fwd_err * 0.5, -0.2, 0.2)
+                strafe_cmd = clamp(right_err * 0.5, -0.2, 0.2)
                 z_err = -1.5 - state.z
                 up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
-                print(f"[AUTOPILOT] Drop Box Flicker! Terbang balik pake memori kamera bawah... Fwd: {fwd_cmd:.2f}")
+                print(f"[AUTOPILOT] Drop Box Flicker! Balik ke kordinat memori... Fwd: {fwd_cmd:.2f}")
                 await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
             else:
                 await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=0.0)
 
     # ---------------------------------------------------------
-    # PHASE 7: YAW_RIGHT_TRIPLE_2 (Yaw Kanan ke Triple Gate 2)
+    # PHASE 7: YAW_RIGHT_TRIPLE_2 (Yaw Kanan ke Triple Gate 1)
     # ---------------------------------------------------------
 
 class ExecuteYawSweep_Right(BaseState):
@@ -803,12 +869,25 @@ class ExecuteYawSweep_Right(BaseState):
         # ---------------------------------------------------------
         # PHASE 2: CENTERING_GATE_1 (Maju nembus gawang pertama)
         # ---------------------------------------------------------
+        # Simpan YAW awal pas mulai fase ini
+        if not hasattr(ctx, 'start_yaw'):
+            ctx.start_yaw = state.yaw
+
+        # Hitung selisih muter (Gyroscopic Yaw)
+        yaw_diff = abs(state.yaw - ctx.start_yaw)
+        if yaw_diff > 180:
+            yaw_diff = 360 - yaw_diff
+
         ctx.timeout_counter += 1
-        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=15.0)
-        if front_status == "LOCKED" and front_class == "Tripple Gate" and front_area > 10000:
-            print(f"[AUTOPILOT] Triple Gate 2 terlihat (Area: {front_area})! Memulai approach...")
+        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=30.0)
+        
+        # HACK: Jangan lock gawang pertama (misi3) yang ada di -108 derajat. 
+        # Tunggu muter minimal 120 derajat baru boleh lock gawang misi2!
+        if front_status == "LOCKED" and front_class == "Tripple Gate" and front_area > 10000 and yaw_diff > 120:
+            print(f"[AUTOPILOT] Triple Gate 1 (Double Gate) terlihat (Area: {front_area}, YawDiff: {yaw_diff:.1f})! Memulai approach...")
             ctx.state_phase = "TRIPLE_GATE_2"
             ctx.timeout_counter = 0
+            del ctx.start_yaw
 
     # ---------------------------------------------------------
     # PHASE 8: TRIPLE_GATE_2 (Lewati lorong ke-2 menuju WP4)
@@ -844,33 +923,37 @@ class AcquireTarget_TripleGate2(BaseState):
             ctx.last_front_err_x = front_err_x
             yaw_cmd = front_err_x * ctx.kp_yaw
             
-            if front_area < 12000:
-                fwd_cmd = 0.8
+            if front_area < 350000:
+                if abs(front_err_x) > 100:
+                    fwd_cmd = 0.0 # Rem dulu biar ngadep lurus ke lubang!
+                else:
+                    fwd_cmd = 0.8
                 z_err = -0.8 - state.z
                 up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
             else:
-                if abs(front_err_x) > 40:
-                    fwd_cmd = 0.0
-                    up_cmd = (front_err_y + 20) * ctx.kp_up
-                else:
-                    fwd_cmd = 0.8
-                    z_err = -0.8 - state.z
-                    up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
+                yaw_cmd = 0.0 # ANTI-DRIFT: Jangan belok-belok di moncong lorong
+                fwd_cmd = 0.8 # FORCE MAJU, jangan ngerem
+                z_err = -0.8 - state.z
+                up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
                     
-            print(f"[AUTOPILOT] [TRIPLE GATE 2] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Yaw: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
+            ctx.timeout_counter = 0
+            print(f"[AUTOPILOT] [TRIPLE GATE 1] Centering (Area: {front_area}). Fwd: {fwd_cmd}, Yaw: {yaw_cmd:.2f}, Z: {up_cmd:.2f}")
             await flight.send_body_velocity(drone, forward_m_s=fwd_cmd, right_m_s=0.0, down_m_s=up_cmd, yaw_deg_s=yaw_cmd)
         else:
             if ctx.has_seen_target:
-                if ctx.last_front_area > 10000 and abs(ctx.last_front_err_x) < 100:
-                    print("[AUTOPILOT] Memasuki Lorong Triple Gate 2! Berpindah ke PUNCH_TRIPLE_GATE_2")
-                    ctx.state_phase = "PUNCH_TRIPLE_GATE_2"
-                    ctx.blind_start_x = state.x
-                    ctx.blind_start_y = state.y
-                    return
-                else:
-                    print(f"[AUTOPILOT] Triple Gate 2 hilang dari jauh (Area: {ctx.last_front_area}). Fallback Hover & Yaw!")
+                ctx.timeout_counter += 1
+                if ctx.timeout_counter > 5:
+                    if ctx.last_front_area > 350000:
+                        print("[AUTOPILOT] Memasuki Lorong Triple Gate 1! Berpindah ke PUNCH_TRIPLE_GATE_2")
+                        ctx.state_phase = "PUNCH_TRIPLE_GATE_2"
+                        ctx.blind_start_x = state.x
+                        ctx.blind_start_y = state.y
+                        return
+                    else:
+                        print(f"[AUTOPILOT] Triple Gate 1 hilang dari jauh (Area: {ctx.last_front_area}). Fallback Hover & Yaw!")
             
-            mem_yaw = ctx.last_front_err_x * ctx.kp_yaw
+            # Hover in place while rotating to find the gate
+            mem_yaw = getattr(ctx, 'last_front_err_x', 0) * ctx.kp_yaw
             mem_yaw = clamp(mem_yaw, -15.0, 15.0)
             await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=0.0, yaw_deg_s=mem_yaw)
 
@@ -898,17 +981,17 @@ class DeadReckoning_TripleGate2(BaseState):
         # PHASE 2: CENTERING_GATE_1 (Maju nembus gawang pertama)
         # ---------------------------------------------------------
         ctx.dist_flown = math.sqrt((state.x - ctx.blind_start_x)**2 + (state.y - ctx.blind_start_y)**2)
-        if ctx.dist_flown < 3.8:
+        if ctx.dist_flown < 7.0:
             strafe_cmd = 0.0
             if state.lidar_left < 4.9 or state.lidar_right < 4.9:
                 strafe_cmd = (state.lidar_right - state.lidar_left) * 0.05
             z_err = -0.8 - state.z
             up_cmd = clamp(z_err * 0.5, -0.5, 0.5)
             
-            print(f"[AUTOPILOT] [TRIPLE GATE 2] Blind Punch INS! Jarak: {ctx.dist_flown:.2f}/3.8m, Lidar: {strafe_cmd:.2f}")
+            print(f"[AUTOPILOT] [TRIPLE GATE 1] Blind Punch INS! Jarak: {ctx.dist_flown:.2f}/7.0m, Lidar: {strafe_cmd:.2f}")
             await flight.send_body_velocity(drone, forward_m_s=0.8, right_m_s=strafe_cmd, down_m_s=up_cmd, yaw_deg_s=0.0)
         else:
-            print("[AUTOPILOT] Lolos Triple Gate 2! Mencari Aruco 3...")
+            print("[AUTOPILOT] Lolos Triple Gate 1! Mencari Red Drop Box (dan Aruco)...")
             ctx.state_phase = "FIND_DROPBOX"
             ctx.has_seen_target = False
 
@@ -964,12 +1047,19 @@ class AcquireTarget_Aruco3(BaseState):
                 ctx.dist_flown = math.sqrt((state.x - ctx.blind_start_x)**2 + (state.y - ctx.blind_start_y)**2)
                 ctx.timeout_counter += 1
                 
-                if ctx.dist_flown > 2.5:
+                if ctx.dist_flown > 2.5 and ctx.timeout_counter < 500:
                     ctx.timeout_counter = 500
+                    ctx.reverse_start_x = state.x
+                    ctx.reverse_start_y = state.y
                     
                 if ctx.timeout_counter >= 500:
-                    print(f"[AUTOPILOT] Kebablasan WP3 di blind spot! Terbang mundur...")
-                    await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    reverse_dist = math.sqrt((state.x - getattr(ctx, 'reverse_start_x', state.x))**2 + (state.y - getattr(ctx, 'reverse_start_y', state.y))**2)
+                    if reverse_dist > 2.0:
+                        print("[AUTOPILOT] Mundur kejauhan WP3, Hover nunggu instruksi!")
+                        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    else:
+                        print(f"[AUTOPILOT] Kebablasan WP3 di blind spot! Terbang mundur...")
+                        await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 else:
                     fwd_creep = 0.3 if ctx.timeout_counter % 20 < 10 else 0.0
                     await flight.send_body_velocity(drone, forward_m_s=fwd_creep, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
@@ -1021,8 +1111,8 @@ class TerminalGuidance_Aruco3(BaseState):
                 ctx.timeout_counter += 1
                 completion_threshold = 50 if down_class == "Aruco" else 150
                 if ctx.timeout_counter > completion_threshold:
-                    print("[AUTOPILOT] Presisi WP3 Tercapai! Mutar kiri nyari Final Gate 1...")
-                    ctx.state_phase = "TURN_ARUCO_3"
+                    print("[AUTOPILOT] Presisi WP3 Tercapai! Lurus nyari Final Gate 1...")
+                    ctx.state_phase = "CENTERING_FINAL_GATE"
                     ctx.timeout_counter = 0
                     ctx.has_seen_target = False
             else:
@@ -1035,6 +1125,7 @@ class TerminalGuidance_Aruco3(BaseState):
                 ctx.timeout_counter = 0
                 ctx.blind_start_x = state.x
                 ctx.blind_start_y = state.y
+                ctx.has_seen_target = False
             elif ctx.has_seen_target:
                 fwd_cmd = clamp(-ctx.last_down_err_y * 0.0015, -0.2, 0.2)
                 strafe_cmd = clamp(ctx.last_down_err_x * 0.0015, -0.2, 0.2)
@@ -1080,8 +1171,8 @@ class ExecuteYawSweep_Aruco3(BaseState):
             ctx.timeout_counter = 0
         
         if ctx.timeout_counter > 120: # ~5 detik (Maksimum turning limit)
-            print("[AUTOPILOT] Timeout belok! Mencari gawang final 1 secara manual...")
-            ctx.state_phase = "FIND_FINAL_GATE_1"
+            print("[AUTOPILOT] Timeout belok! Paksa masuk mode Centering Final Gate...")
+            ctx.state_phase = "CENTERING_FINAL_GATE"
             ctx.timeout_counter = 0
 
     # ---------------------------------------------------------
@@ -1139,12 +1230,19 @@ class AcquireTarget_LandingPad(BaseState):
                 ctx.dist_flown = math.sqrt((state.x - ctx.blind_start_x)**2 + (state.y - ctx.blind_start_y)**2)
                 ctx.timeout_counter += 1
                 
-                if ctx.dist_flown > 2.5:
+                if ctx.dist_flown > 2.5 and ctx.timeout_counter < 500:
                     ctx.timeout_counter = 500 # Latch reverse state
+                    ctx.reverse_start_x = state.x
+                    ctx.reverse_start_y = state.y
                     
                 if ctx.timeout_counter >= 500:
-                    print(f"[AUTOPILOT] Kebablasan Landing Pad di blind spot! Terbang mundur...")
-                    await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    reverse_dist = math.sqrt((state.x - getattr(ctx, 'reverse_start_x', state.x))**2 + (state.y - getattr(ctx, 'reverse_start_y', state.y))**2)
+                    if reverse_dist > 2.0:
+                        print("[AUTOPILOT] Mundur kejauhan Landing Pad, Hover nunggu instruksi!")
+                        await flight.send_body_velocity(drone, forward_m_s=0.0, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
+                    else:
+                        print(f"[AUTOPILOT] Kebablasan Landing Pad di blind spot! Terbang mundur...")
+                        await flight.send_body_velocity(drone, forward_m_s=-0.3, right_m_s=0.0, down_m_s=climb_cmd, yaw_deg_s=0.0)
                 else:
                     # Stutter creep to level pitch and scan straight down
                     fwd_creep = 0.3 if ctx.timeout_counter % 20 < 10 else 0.0
@@ -1227,6 +1325,7 @@ class TerminalDescent_Landing(BaseState):
                 ctx.landing_ticks = 0
                 ctx.blind_start_x = state.x
                 ctx.blind_start_y = state.y
+                ctx.has_seen_target = False
             elif ctx.has_seen_target:
                 # FALLBACK MEMORY DOWN CAMERA
                 fwd_cmd = clamp(-ctx.last_down_err_y * 0.0015, -0.2, 0.2)
@@ -1258,6 +1357,7 @@ STATE_REGISTRY = {
     "FIND_ARUCO_3": AcquireTarget_Aruco3(),
     "CENTER_ARUCO_3": TerminalGuidance_Aruco3(),
     "TURN_ARUCO_3": ExecuteYawSweep_Aruco3(),
+    "YAW_RIGHT_FINAL_LINE": ExecuteYawSweep_FinalLine(),
     "FIND_LANDING_PAD": AcquireTarget_LandingPad(),
     "PRECISION_LANDING": TerminalDescent_Landing(),
 }

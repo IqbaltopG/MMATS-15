@@ -6,6 +6,7 @@ class DroneState:
         self.x = 0.0
         self.y = 0.0
         self.z = 0.0
+        self.yaw = 0.0
         self.lidar_left = 5.0
         self.lidar_right = 5.0
         self.target_front = {"status": "LOST", "class": "none", "error_x": 0, "error_y": 0, "area": 0, "confident": 0.0}
@@ -18,6 +19,10 @@ async def telemetry_task(drone):
         state.x = pos_vel.position.north_m
         state.y = pos_vel.position.east_m
         state.z = pos_vel.position.down_m
+
+async def attitude_task(drone):
+    async for attitude in drone.telemetry.attitude_euler():
+        state.yaw = attitude.yaw_deg
 
 class UDPReceiverProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, data, addr):
