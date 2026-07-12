@@ -127,4 +127,4 @@ When traversing complex geometries (like Drop Boxes or Landing Pads), the drone 
 - 🛠️ **Resolution:** The legacy monolithic `if-elif` code was entirely refactored into a modular OOP State Machine. Deep architectural bugs, including the "Triple Gate Internal Wall Shrinkage" illusion and the "Infinite Reverse Kebablasan" bug, were successfully patched using persistent GPS/Lidar memory buffering.
 
 ---
-> *"Terinspirasi dari misil AAM, AGM. LSRG, Strider Squadron, Galm Team. GeoHot, Tyler Durden, Saul Goodman. Anduril, Lockheed Martin, dan Pak Gusti (dosen Machine Learning-ku)."*
+> *"Terinspirasi dari misil AAM, AGM. LSRG, Strider Squadron, Galm Team. GeoHot, Tyler Durden, Saul Goodman. Anduril, Lockheed Martin, dan Pak Gusti (dosen Machine Learning-ku), Pak Thor juga sebagai dospem krti yang membebaskanku untuk bikin program seaneh ini."*
