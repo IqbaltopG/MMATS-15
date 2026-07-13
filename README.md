@@ -5,20 +5,10 @@
 ![MAVSDK](https://img.shields.io/badge/MAVSDK-Enabled-success?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Unlicense-black?style=for-the-badge)
 
-## 📌 Executive Summary (The Architect's Manifesto)
-Jadi selama liburan ini aku menjalankan project aneh sebenarnya yang dibantu ai-assistant ku. Bukan project aneh juga sih, lebih ke project buat KRTI (Kompetisi Robot Terbang Indonesia). Nah karena kita masuk di divisi VTOL yang sebenarnya bukan VTOL sih lebih ke Autonomous QUADCOPTER aneh juga penyelenggara ini.
+## 📌 Executive Summary
+Listen up. This repo contains **MMATS-15**, a highly aggressive, brute-force autonomous targeting architecture for precision payload delivery (X500 frame). We didn't build this to look pretty. We built it following the **KISS (Keep It Simple, Stupid)** principle because the hardware we are running on (budget laptops for SITL, Raspberry Pi 5 for Edge) will literally melt if you try to shove a bloated ROS2 framework down its throat. 
 
-Ini beberapa masalah yang kudapat: Pertama **Hardware Constraint** dimana tentunya kami kekurangan dana untuk membeli companion computer yang cukup kuat. Masalah kedua karena hardware constraint tadi, orang umum biasanya memakai ROS/ROS2 untuk menggabungkan program sensor-sensor dan AI nya, nah disini aku membuat penemuan baru.
-
-Bukan penemuan juga sih, aku lebih ke *reinventing the wheel* bahasa kerennya, jadi aku bikin ala-ala ROS tapi dengan bumbu lebih ringan aja. Karena kan yang dikirim dari AI(YOLO) dan sensor lain paling X,Y,Z atau jarak kan jadinya aku bikin pengiriman datanya memakai UDP dan sistem ini kunamain **MARUK (Multicast Asynchronous Reflex UDP Kinematics)**.
-
-Dan state machine yang kubikin, ato apa ya bahasa lainnya ya mesin dengan fase lah ceritanya, nah disini aku bikin ntah **Hardware Agnostik** mungkin karena walau kamera jelek lidar murahan (in SIM) aku bikin dia tetap bisa full course arena di simulasi dengan kodingan seadanya dengan beberapa fitur yang terinspirasi dari **MISIL AAM (Air to Air Missile)**. Jadi kaya ada lock target, fallback memory (kalau target hilang), Punch Blind (Kalkulasi pergerakan tapi sensor camera/AI YOLO tidak dipakai), Dsb.
-
-Dan arsitektur ini kuberi nama **MMATS-15 (Microservice Multisensor Autonomous Targetting System)** untuk 15 dari F15C karena suka aja.
-
-Oiya kodingannya sudah cukup modular dan tinggal ganti kodingan state tergantung misi kalian, dan jangan lupa kalau kalian punya AI sendiri tinggal ganti aja kodingan di `vision_daemon.py` nya karena itu AI aneh ku anotasi sembarangan namanya kita mau cepat yekan. 
-
-Bisa kalian coba sendiri ada di github pribadiku open-source dengan licence **THE Unlicense** (cause i think its funny).
+This is raw UDP microservices. It's got time-dilation physics compensation, "Tunnel Blind Charge" memory buffers, and zero-cost sensor fusion. The legacy spaghetti code has been entirely rewritten into a robust Object-Oriented State Machine. It's clean, it's decoupled, and it lands the drone flawlessly. 
 
 ## 🛠️ Tech Stack
 * **Core Logic (Autopilot):** Python 3.10, MAVSDK, asyncio, UDP Sockets
@@ -105,18 +95,6 @@ Before you dump a stack trace in the group chat, use your brain:
 3. **"Make failed during compile!"** -> Scroll up and find the first RED text. Don't just read "Failed" at the very bottom like an idiot. Read the actual error log.
 
 > **RTFM (Read The Fucking Manual):** These instructions are tested. Execute them exactly as written.
-
----
-
-## ⚡ HOW TO RUN (THE ANTI-BLOATWARE WAY)
-Lupakan ritual menyalakan puluhan terminal atau build workspace ROS yang makan waktu 10 menit. MMATS-15 dirancang untuk FAFO (Fast & Furious). 
-
-1. Pastikan Anda berada di direktori `DRONE` dan Simulator (SITL) sudah menyala di background.
-2. Nyalakan sirkuit dengan mengeksekusi launcher Python All-in-One:
-   ```bash
-   python3 maruk_launcher.py
-   ```
-3. Selesai. Skrip ini akan secara otomatis memecah terminal/proses untuk menyalakan `vision_daemon.py` (Kamera/AI) dan `autopilot.py` (State Machine) secara paralel. Drone Anda akan langsung Armed, Take-Off, dan mulai berburu target!
 
 ---
 
