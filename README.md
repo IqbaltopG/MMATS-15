@@ -98,6 +98,18 @@ Before you dump a stack trace in the group chat, use your brain:
 
 ---
 
+## ⚡ HOW TO RUN (THE ANTI-BLOATWARE WAY)
+Lupakan ritual menyalakan puluhan terminal atau build workspace ROS yang makan waktu 10 menit. MMATS-15 dirancang untuk FAFO (Fast & Furious). 
+
+1. Pastikan Anda berada di direktori `DRONE` dan Simulator (SITL) sudah menyala di background.
+2. Nyalakan sirkuit dengan mengeksekusi launcher Python All-in-One:
+   ```bash
+   python3 maruk_launcher.py
+   ```
+3. Selesai. Skrip ini akan secara otomatis memecah terminal/proses untuk menyalakan `vision_daemon.py` (Kamera/AI) dan `autopilot.py` (State Machine) secara paralel. Drone Anda akan langsung Armed, Take-Off, dan mulai berburu target!
+
+---
+
 ## 👁️ The MMATS-15 Architecture
 
 ### 1. Zero-Cost Sensor Fusion (LiDAR + Bounding Box Area)
