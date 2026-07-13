@@ -108,6 +108,8 @@ Lupakan ritual menyalakan puluhan terminal atau build workspace ROS yang makan w
    ```
 3. Selesai. Skrip ini akan secara otomatis memecah terminal/proses untuk menyalakan `vision_daemon.py` (Kamera/AI) dan `autopilot.py` (State Machine) secara paralel. Drone Anda akan langsung Armed, Take-Off, dan mulai berburu target!
 
+> **⚠️ NOTE (WIP):** Skrip `maruk_launcher.py` masih dalam tahap pengembangan. *Log/Output* dari Vision dan Autopilot akan menumpuk (*overlapping*) di satu terminal. Abaikan saja visualnya yang berantakan, tujuannya murni efisiensi agar Anda tidak perlu repot membuka 3 terminal secara manual.
+
 ---
 
 ## 👁️ The MMATS-15 Architecture
