@@ -108,7 +108,9 @@ Forget the ritual of opening a dozen terminals or compiling a massive ROS worksp
    ```
 3. You're done. This script automatically spawns child processes to run `vision_daemon.py` (Camera/AI) and `autopilot.py` (State Machine) in parallel. The drone will instantly Arm, Take-Off, and begin hunting targets.
 
-> **⚠️ NOTE (WIP):** The `maruk_launcher.py` script is currently in development. The stdout logs from both the Vision Daemon and Autopilot will overlap in the same terminal. Ignore the visual mess; we did this purely for efficiency so you don't have to manually orchestrate 3 separate terminal windows.
+> **⚠️ NOTE (WIP):** The `maruk_launcher.py` script is currently in development. The stdout logs from both the Vision Daemon and Autopilot will overlap in the same terminal. Ignore the visual mess; we did this purely for efficiency so you don't have to manually orchestrate 3 separate terminal windows. 
+> 
+> However, it's completely up to you. You can either use the launcher for a fast deployment, or you can manually run `vision_daemon.py` and `autopilot.py` in separate terminals to treat them as clean, isolated microservices.
 
 ---
 
