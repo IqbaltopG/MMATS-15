@@ -99,16 +99,16 @@ Before you dump a stack trace in the group chat, use your brain:
 ---
 
 ## ⚡ HOW TO RUN (THE ANTI-BLOATWARE WAY)
-Lupakan ritual menyalakan puluhan terminal atau build workspace ROS yang makan waktu 10 menit. MMATS-15 dirancang untuk FAFO (Fast & Furious). 
+Forget the ritual of opening a dozen terminals or compiling a massive ROS workspace that takes 10 minutes. MMATS-15 is built for speed.
 
-1. Pastikan Anda berada di direktori `DRONE` dan Simulator (SITL) sudah menyala di background.
-2. Nyalakan sirkuit dengan mengeksekusi launcher Python All-in-One:
+1. Ensure you are inside the `DRONE` directory and the Simulator (SITL) is already running in the background.
+2. Ignite the circuit by executing the All-in-One Python launcher:
    ```bash
    python3 maruk_launcher.py
    ```
-3. Selesai. Skrip ini akan secara otomatis memecah terminal/proses untuk menyalakan `vision_daemon.py` (Kamera/AI) dan `autopilot.py` (State Machine) secara paralel. Drone Anda akan langsung Armed, Take-Off, dan mulai berburu target!
+3. You're done. This script automatically spawns child processes to run `vision_daemon.py` (Camera/AI) and `autopilot.py` (State Machine) in parallel. The drone will instantly Arm, Take-Off, and begin hunting targets.
 
-> **⚠️ NOTE (WIP):** Skrip `maruk_launcher.py` masih dalam tahap pengembangan. *Log/Output* dari Vision dan Autopilot akan menumpuk (*overlapping*) di satu terminal. Abaikan saja visualnya yang berantakan, tujuannya murni efisiensi agar Anda tidak perlu repot membuka 3 terminal secara manual.
+> **⚠️ NOTE (WIP):** The `maruk_launcher.py` script is currently in development. The stdout logs from both the Vision Daemon and Autopilot will overlap in the same terminal. Ignore the visual mess; we did this purely for efficiency so you don't have to manually orchestrate 3 separate terminal windows.
 
 ---
 
